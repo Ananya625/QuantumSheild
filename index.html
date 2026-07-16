@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Shield - RSA Cryptographic Suite</title>
+    <meta name="description" content="Generate RSA keys, encrypt and decrypt messages, and securely sign or verify files using client-side Web Crypto API.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>QuantumShield</span>
+            </div>
+            <div class="subtitle">
+                <i class="fa-solid fa-microchip"></i> RSA Cryptographic Engine
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Tabs Navigation -->
+        <nav class="tabs-nav" aria-label="Cryptographic Suite Functions">
+            <button class="tab-btn active" id="btn-tab-gen" onclick="switchTab('tab-gen')">
+                <i class="fa-solid fa-key"></i> Key Generator
+            </button>
+            <button class="tab-btn" id="btn-tab-crypt" onclick="switchTab('tab-crypt')">
+                <i class="fa-solid fa-lock"></i> Encrypt / Decrypt
+            </button>
+            <button class="tab-btn" id="btn-tab-sign" onclick="switchTab('tab-sign')">
+                <i class="fa-solid fa-file-signature"></i> Sign / Verify File
+            </button>
+            <button class="tab-btn" id="btn-tab-compare" onclick="switchTab('tab-compare')">
+                <i class="fa-solid fa-chart-simple"></i> Comparison Suite
+            </button>
+            <button class="tab-btn" id="btn-tab-aes" onclick="switchTab('tab-aes')">
+                <i class="fa-solid fa-file-shield"></i> File Encryptor (AES)
+            </button>
+            <button class="tab-btn" id="btn-tab-tls" onclick="switchTab('tab-tls')">
+                <i class="fa-solid fa-network-wired"></i> TLS Handshake Demo
+            </button>
+        </nav>
+
+        <!-- Tab 1: Key Generator -->
+        <section id="tab-gen" class="tab-content active">
+            <div class="crypto-card">
+                <h1 class="card-title">
+                    <i class="fa-solid fa-sliders"></i> Generate RSA Key Pair
+                </h1>
+                <p style="color: var(--text-secondary); margin-top: -1rem; font-size: 0.9rem;">
+                    Generate cryptographic keys locally in your browser. Select the purpose to optimize Web Crypto parameters.
+                </p>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="key-purpose">Key Purpose / Algorithm</label>
+                        <select id="key-purpose" onchange="handleKeyPurposeChange()">
+                            <option value="RSA-OAEP">Encryption & Decryption (RSA-OAEP)</option>
+                            <option value="RSA-PSS">Signing & Verification (RSA-PSS)</option>
+                            <option value="RSASSA-PKCS1-v1_5">Signing & Verification (RSASSA-PKCS1-v1_5)</option>
+                            <option value="ECDSA-P-256">Signing & Verification (ECDSA P-256)</option>
+                            <option value="ECDSA-P-384">Signing & Verification (ECDSA P-384)</option>
+                            <option value="ECDSA-P-521">Signing & Verification (ECDSA P-521)</option>
+                        </select>
+                        <span class="helper-text">Web Crypto requires separate key types for encryption vs digital signatures.</span>
+                    </div>
+                    <div class="form-group" id="key-size-group">
+                        <label for="key-size" id="key-size-label">Key Size (bits)</label>
+                        <select id="key-size">
+                            <option value="2048" selected>2048 bits (Standard)</option>
+                            <option value="3072">3072 bits (Secure)</option>
+                            <option value="4096">4096 bits (High Security)</option>
+                        </select>
+                        <span class="helper-text" id="key-size-helper">Larger keys provide stronger security but take slightly longer to generate.</span>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn" id="btn-generate-keys" onclick="generateKeyPair()">
+                        <i class="fa-solid fa-gears"></i> Generate Key Pair
+                    </button>
+                </div>
+
+                <!-- Generated Keys Output -->
+                <div class="grid-2 hidden" id="key-outputs-container">
+                    <div class="form-group">
+                        <div class="output-header">
+                            <label for="public-key-output">Public Key (PEM)</label>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary btn-small" onclick="copyToClipboard('public-key-output', 'copy-pub-text')">
+                                    <i class="fa-regular fa-copy"></i> <span id="copy-pub-text">Copy</span>
+                                </button>
+                                <button class="btn btn-secondary btn-small" onclick="downloadKey('public-key-output', 'public_key.pem')">
+                                    <i class="fa-solid fa-download"></i> Download
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="public-key-output" readonly></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="output-header">
+                            <label for="private-key-output">Private Key (PEM)</label>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary btn-small" onclick="copyToClipboard('private-key-output', 'copy-priv-text')">
+                                    <i class="fa-regular fa-copy"></i> <span id="copy-priv-text">Copy</span>
+                                </button>
+                                <button class="btn btn-secondary btn-small" onclick="downloadKey('private-key-output', 'private_key.pem')">
+                                    <i class="fa-solid fa-download"></i> Download
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="private-key-output" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 2: Encrypt / Decrypt -->
+        <section id="tab-crypt" class="tab-content">
+            <div class="crypto-card">
+                <h1 class="card-title">
+                    <i class="fa-solid fa-shield-halved"></i> RSA-OAEP Encryption & Decryption
+                </h1>
+
+                <div class="grid-2">
+                    <!-- Left: Inputs -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="form-group">
+                            <label for="crypt-mode">Operation Mode</label>
+                            <select id="crypt-mode" onchange="toggleCryptMode()">
+                                <option value="encrypt">Encrypt Plaintext with Public Key</option>
+                                <option value="decrypt">Decrypt Ciphertext with Private Key</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label id="crypt-input-label" for="crypt-input">Plaintext Message</label>
+                            <textarea id="crypt-input" placeholder="Enter message to encrypt..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label id="crypt-key-label" for="crypt-key">Public Key (PEM)</label>
+                            <textarea id="crypt-key" placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"></textarea>
+                        </div>
+
+                        <div class="btn-group">
+                            <button class="btn" id="btn-crypt-execute" onclick="executeEncryptionDecryption()">
+                                <i class="fa-solid fa-lock"></i> Encrypt Message
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Output -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="form-group">
+                            <label for="crypt-encoding">Ciphertext Encoding (For Encryption)</label>
+                            <select id="crypt-encoding" onchange="updateCryptOutputDisplay()">
+                                <option value="base64" selected>Base64 (Standard)</option>
+                                <option value="hex">Hexadecimal</option>
+                            </select>
+                        </div>
+
+                        <div class="output-card" style="flex: 1; display: flex; flex-direction: column; min-height: 250px;">
+                            <div class="output-header">
+                                <span class="output-label" id="crypt-output-label">Ciphertext Result</span>
+                                <button class="btn btn-secondary btn-small" id="btn-copy-crypt-output" onclick="copyToClipboard('crypt-output', 'copy-crypt-text')">
+                                    <i class="fa-regular fa-copy"></i> <span id="copy-crypt-text">Copy</span>
+                                </button>
+                            </div>
+                            <textarea id="crypt-output" readonly style="flex: 1; width: 100%; min-height: 180px; margin-top: 0.5rem;" placeholder="Result will appear here..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 3: Sign / Verify File -->
+        <section id="tab-sign" class="tab-content">
+            <div class="crypto-card">
+                <h1 class="card-title">
+                    <i class="fa-solid fa-file-signature"></i> Secure File Signing & Verification
+                </h1>
+
+                <div class="grid-2">
+                    <!-- Left: Mode and File Upload -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="form-group">
+                            <label for="sign-mode">Operation Mode</label>
+                            <select id="sign-mode" onchange="toggleSignMode()">
+                                <option value="sign">Sign File (Generate Signature)</option>
+                                <option value="verify">Verify File (Verify Signature)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sign-algorithm">Signing Algorithm</label>
+                            <select id="sign-algorithm">
+                                <option value="RSA-PSS">RSA-PSS (Recommended)</option>
+                                <option value="RSASSA-PKCS1-v1_5">RSASSA-PKCS1-v1_5</option>
+                                <option value="ECDSA-P-256">ECDSA P-256</option>
+                                <option value="ECDSA-P-384">ECDSA P-384</option>
+                                <option value="ECDSA-P-521">ECDSA P-521</option>
+                            </select>
+                            <span class="helper-text">Must match the key type and the algorithm used for signing.</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>File to Process</label>
+                            <div class="file-dropzone" id="file-zone" onclick="document.getElementById('file-input').click()">
+                                <i class="fa-solid fa-file-arrow-up"></i>
+                                <span class="file-info" id="file-zone-text">Drag and drop file here, or click to browse</span>
+                                <span class="file-name-display hidden" id="file-name-display"></span>
+                                <input type="file" id="file-input" class="hidden" onchange="handleFileSelect(event)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Key Inputs, Signatures, and Verification Status -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="form-group">
+                            <label id="sign-key-label" for="sign-key">Private Key (PEM)</label>
+                            <textarea id="sign-key" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
+                        </div>
+
+                        <!-- Only shown for Verification Mode -->
+                        <div class="form-group hidden" id="signature-input-group">
+                            <label>Signature Input Method</label>
+                            <div class="btn-group" style="margin-bottom: 0.5rem;">
+                                <button type="button" class="btn btn-secondary btn-small active" id="btn-sig-method-file" onclick="setSignatureMethod('file')">
+                                    <i class="fa-solid fa-file-import"></i> Upload .sig File
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-small" id="btn-sig-method-text" onclick="setSignatureMethod('text')">
+                                    <i class="fa-solid fa-align-left"></i> Paste Signature Text
+                                </button>
+                            </div>
+
+                            <!-- Upload Signature File -->
+                            <div id="sig-file-container">
+                                <div class="file-dropzone" id="sig-file-zone" onclick="document.getElementById('sig-file-input').click()" style="padding: 1.5rem 1rem;">
+                                    <i class="fa-solid fa-signature" style="font-size: 1.8rem;"></i>
+                                    <span class="file-info" id="sig-file-zone-text" style="font-size: 0.8rem;">Drag and drop signature (.sig) file here, or click to browse</span>
+                                    <span class="file-name-display hidden" id="sig-file-name-display" style="font-size: 0.85rem;"></span>
+                                    <input type="file" id="sig-file-input" class="hidden" accept=".sig" onchange="handleSigFileSelect(event)">
+                                </div>
+                            </div>
+
+                            <!-- Paste Signature Text -->
+                            <div id="sig-text-container" class="hidden">
+                                <label for="signature-input" style="font-size: 0.8rem;">Signature (Base64 or Hex)</label>
+                                <textarea id="signature-input" placeholder="Paste the generated signature here..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="btn-group">
+                            <button class="btn" id="btn-sign-execute" onclick="executeSigningVerification()">
+                                <i class="fa-solid fa-signature"></i> Sign File
+                            </button>
+                        </div>
+
+                        <!-- Output for Signing -->
+                        <div class="output-card hidden" id="signature-output-group">
+                            <div class="output-header">
+                                <span class="output-label">Generated Signature</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-secondary btn-small" onclick="copyToClipboard('signature-output', 'copy-sig-text')">
+                                        <i class="fa-regular fa-copy"></i> <span id="copy-sig-text">Copy</span>
+                                    </button>
+                                    <button class="btn btn-secondary btn-small" onclick="downloadSignature()">
+                                        <i class="fa-solid fa-download"></i> Download Signature
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea id="signature-output" readonly style="min-height: 80px; margin-top: 0.5rem;"></textarea>
+                        </div>
+
+                        <!-- Verification Result Banner -->
+                        <div id="verify-result-banner" class="status-banner hidden">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 4: Comparison Suite -->
+        <section id="tab-compare" class="tab-content">
+            <div class="crypto-card">
+                <h1 class="card-title">
+                    <i class="fa-solid fa-chart-simple"></i> RSA vs ECC Cryptographic Comparison Suite
+                </h1>
+                <p style="color: var(--text-secondary); margin-top: -1rem; font-size: 0.9rem;">
+                    Run client-side performance benchmarks to compare execution times, key sizes, and signature sizes for RSA and Elliptic Curve Cryptography (ECC).
+                </p>
+
+                <div class="btn-group">
+                    <button class="btn" id="btn-run-benchmark" onclick="runBenchmark()">
+                        <i class="fa-solid fa-play"></i> Run Browser Benchmark
+                    </button>
+                </div>
+
+                <!-- Progress indicators -->
+                <div id="benchmark-progress-container" class="hidden" style="margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem;">
+                        <span id="benchmark-progress-text" style="color: var(--neon-blue); font-weight: 500;">Initializing benchmark...</span>
+                        <span id="benchmark-progress-percent">0%</span>
+                    </div>
+                    <div style="background: rgba(255, 255, 255, 0.05); height: 6px; border-radius: 3px; overflow: hidden; border: 1px solid var(--border-color);">
+                        <div id="benchmark-progress-bar" style="background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple)); width: 0%; height: 100%; transition: width 0.1s ease;"></div>
+                    </div>
+                </div>
+
+                <!-- Comparison Dashboard Grid -->
+                <div id="benchmark-results-container" class="hidden" style="display: flex; flex-direction: column; gap: 2rem; margin-top: 1rem;">
+                    
+                    <!-- Table Section -->
+                    <div class="output-card" style="overflow-x: auto;">
+                        <div class="output-header">
+                            <span class="output-label">Detailed Performance Metrics</span>
+                            <span class="badge badge-blue"><i class="fa-solid fa-bolt"></i> Real-time Client Performance</span>
+                        </div>
+                        <table class="compare-table" style="width: 100%; border-collapse: collapse; text-align: left; margin-top: 0.5rem; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-secondary);">
+                                    <th style="padding: 0.75rem 1rem;">Algorithm</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: right;">Key Gen (ms)</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: right;">Pub Key (Bytes)</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: right;">Priv Key (Bytes)</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: right;">Sign Time (ms)</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: right;">Sig Size (Bytes)</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: right;">Verify Time (ms)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="compare-table-body">
+                                <!-- Populated dynamically by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="grid-2">
+                        <!-- Chart 1: Key Gen Time -->
+                        <div class="output-card">
+                            <div class="output-header">
+                                <span class="output-label">Key Generation Time (Lower is Better)</span>
+                            </div>
+                            <div class="chart-container" id="chart-keygen">
+                                <!-- Populated dynamically by custom SVG bars -->
+                            </div>
+                        </div>
+
+                        <!-- Chart 2: Signature Size -->
+                        <div class="output-card">
+                            <div class="output-header">
+                                <span class="output-label">Signature Size (Lower is Better)</span>
+                            </div>
+                            <div class="chart-container" id="chart-sigsize">
+                                <!-- Populated dynamically by custom SVG bars -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <!-- Chart 3: Sign vs Verify Time -->
+                        <div class="output-card">
+                            <div class="output-header">
+                                <span class="output-label">Signing vs Verification Speed (ms)</span>
+                            </div>
+                            <div class="chart-container" id="chart-ops">
+                                <!-- Populated dynamically by custom SVG bars -->
+                            </div>
+                        </div>
+
+                        <!-- Education and Insights Card -->
+                        <div class="output-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="output-header">
+                                <span class="output-label"><i class="fa-solid fa-lightbulb"></i> Cryptographic Trade-offs</span>
+                            </div>
+                            <div id="comparison-insights" style="font-size: 0.875rem; line-height: 1.6; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.75rem;">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 5: AES File Encryptor -->
+        <section id="tab-aes" class="tab-content">
+            <div class="crypto-card">
+                <h1 class="card-title">
+                    <i class="fa-solid fa-file-shield"></i> Secure File Encryption & Integrity Verification
+                </h1>
+                <p style="color: var(--text-secondary); margin-top: -1rem; font-size: 0.9rem;">
+                    Encrypt and decrypt files locally in your browser using AES-GCM (256-bit). File integrity is verified post-decryption using SHA-256 checksums.
+                </p>
+
+                <div class="grid-2">
+                    <!-- Left: Configuration & File Upload -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="form-group">
+                            <label for="aes-mode">Operation Mode</label>
+                            <select id="aes-mode" onchange="toggleAesMode()">
+                                <option value="encrypt" selected>Encrypt File (Symmetric Encryption)</option>
+                                <option value="decrypt">Decrypt File (Verify & Restore)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label id="aes-file-label">File to Process</label>
+                            <div class="file-dropzone" id="aes-file-zone" onclick="document.getElementById('aes-file-input').click()">
+                                <i class="fa-solid fa-file-shield"></i>
+                                <span class="file-info" id="aes-file-zone-text">Drag and drop file here, or click to browse</span>
+                                <span class="file-name-display hidden" id="aes-file-name-display"></span>
+                                <input type="file" id="aes-file-input" class="hidden" onchange="handleAesFileSelect(event)">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="aes-key-source">Key Source</label>
+                            <select id="aes-key-source" onchange="toggleAesKeySource()">
+                                <option value="passphrase" selected>Passphrase / Password (PBKDF2 Derived)</option>
+                                <option value="raw">Raw 256-bit Key (Hex or Base64)</option>
+                            </select>
+                        </div>
+
+                        <!-- Passphrase Inputs -->
+                        <div class="form-group" id="aes-passphrase-group">
+                            <label for="aes-passphrase">Passphrase / Password</label>
+                            <div style="position: relative;">
+                                <input type="password" id="aes-passphrase" placeholder="Enter strong security password..." style="padding-right: 2.5rem; background: rgba(8, 11, 17, 0.6); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 0.75rem; width: 100%;">
+                                <button type="button" onclick="togglePasswordVisibility('aes-passphrase', 'aes-toggle-eye')" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
+                                    <i class="fa-solid fa-eye" id="aes-toggle-eye"></i>
+                                </button>
+                            </div>
+                            <span class="helper-text">Derived using PBKDF2-HMAC-SHA256 with 100,000 iterations.</span>
+                        </div>
+
+                        <!-- Raw Key Inputs -->
+                        <div class="form-group hidden" id="aes-raw-key-group">
+                            <label for="aes-raw-key">Raw 256-bit Key (Hex or Base64)</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+                                <textarea id="aes-raw-key" placeholder="Enter 64-hex characters or 44-base64 characters key..." style="flex: 1; min-height: 80px;"></textarea>
+                                <button class="btn btn-secondary" onclick="generateAndSetRandomAesKey()" title="Generate Random AES Key" style="height: 42px; width: 42px; padding: 0; display: flex; align-items: center; justify-content: center; margin-top: 0;">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                </button>
+                            </div>
+                            <span class="helper-text">Must be a 32-byte key represented in Hex (64 chars) or Base64 (44 chars).</span>
+                        </div>
+                    </div>
+
+                    <!-- Right: Encryption/Decryption Details, Hashes, Progress -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <!-- File Details Card -->
+                        <div class="output-card hidden" id="aes-file-details-card">
+                            <div class="output-header">
+                                <span class="output-label">Target File Metadata</span>
+                                <span class="badge badge-purple" id="aes-file-badge">Ready</span>
+                            </div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.4rem;">
+                                <div><strong>Name:</strong> <span id="aes-details-name" style="color: var(--text-primary); font-family: var(--font-mono);"></span></div>
+                                <div><strong>Size:</strong> <span id="aes-details-size" style="color: var(--text-primary);"></span></div>
+                                <div id="aes-details-type-container"><strong>Type:</strong> <span id="aes-details-type" style="color: var(--text-primary); font-family: var(--font-mono);"></span></div>
+                            </div>
+                        </div>
+
+                        <!-- Integrity SHA-256 Card -->
+                        <div class="output-card hidden" id="aes-integrity-card">
+                            <div class="output-header">
+                                <span class="output-label">SHA-256 Integrity Verification</span>
+                                <button class="btn btn-secondary btn-small" onclick="copyToClipboard('aes-sha256-output', 'copy-aes-sha-text')">
+                                    <i class="fa-regular fa-copy"></i> <span id="copy-aes-sha-text">Copy Hash</span>
+                                </button>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <label style="font-size: 0.75rem; color: var(--text-secondary);">Plaintext SHA-256 Checksum</label>
+                                <textarea id="aes-sha256-output" readonly style="min-height: 50px; font-size: 0.8rem; height: 50px;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Decryption Hash Comparison Card -->
+                        <div class="output-card hidden" id="aes-comparison-card">
+                            <div class="output-header">
+                                <span class="output-label">Integrity Validation Results</span>
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.6rem;">
+                                <div>
+                                    <div style="margin-bottom: 0.2rem;"><strong>Expected Checksum</strong> (from file header):</div>
+                                    <div id="aes-expected-hash" style="font-family: var(--font-mono); color: var(--neon-blue); word-break: break-all; background: rgba(8,11,17,0.4); padding: 0.4rem; border-radius: 4px; border: 1px solid var(--border-color);">--</div>
+                                </div>
+                                <div>
+                                    <div style="margin-bottom: 0.2rem;"><strong>Computed Decrypted Checksum</strong>:</div>
+                                    <div id="aes-computed-hash" style="font-family: var(--font-mono); color: var(--neon-purple); word-break: break-all; background: rgba(8,11,17,0.4); padding: 0.4rem; border-radius: 4px; border: 1px solid var(--border-color);">--</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="btn-group" style="margin-top: auto;">
+                            <button class="btn" id="btn-aes-execute" onclick="executeAesOperation()" style="width: 100%; height: 50px; font-size: 1.05rem;">
+                                <i class="fa-solid fa-lock"></i> Encrypt & Download
+                            </button>
+                        </div>
+
+                        <!-- Status Alert Banner -->
+                        <div id="aes-result-banner" class="status-banner hidden">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 6: TLS Handshake Demo -->
+        <section id="tab-tls" class="tab-content">
+            <div class="crypto-card">
+                <h1 class="card-title">
+                    <i class="fa-solid fa-network-wired"></i> HTTPS & TLS Handshake Visualization
+                </h1>
+                <p style="color: var(--text-secondary); margin-top: -1rem; font-size: 0.9rem;">
+                    Perform a real-time secure handshake with your local Flask HTTPS server. Visualizes the TLS 1.3 key exchange and network packets.
+                </p>
+
+                <div class="grid-2">
+                    <!-- Left: Control Panel and Connection Info -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="form-group">
+                            <label>Local HTTPS Server Endpoint</label>
+                            <input type="text" id="tls-server-url" value="https://localhost:5000/api/tls-details" style="font-family: var(--font-mono); font-size: 0.85rem;">
+                        </div>
+
+                        <div class="btn-group">
+                            <button class="btn" id="btn-fetch-tls" onclick="fetchTlsDetails()">
+                                <i class="fa-solid fa-bolt"></i> Fetch TLS Connection Details
+                            </button>
+                        </div>
+
+                        <!-- TLS Dashboard Status Card -->
+                        <div class="output-card" id="tls-status-card">
+                            <div class="output-header">
+                                <span class="output-label">Symmetric Session Security</span>
+                                <span class="badge badge-purple" id="tls-connection-status">Not Checked</span>
+                            </div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                                <div><strong>Protocol Version:</strong> <span id="tls-val-version" style="color: var(--text-primary); font-family: var(--font-mono);">--</span></div>
+                                <div><strong>Selected Cipher Suite:</strong> <span id="tls-val-cipher" style="color: var(--text-primary); font-family: var(--font-mono);">--</span></div>
+                                <div><strong>Cipher Key Strength:</strong> <span id="tls-val-strength" style="color: var(--text-primary);">--</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Server Certificate Info Card -->
+                        <div class="output-card hidden" id="tls-cert-card">
+                            <div class="output-header">
+                                <span class="output-label">Verified Server Certificate Details</span>
+                                <span class="badge badge-green"><i class="fa-solid fa-certificate"></i> Trusted Certificate</span>
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem;">
+                                <div><strong>Common Name (CN):</strong> <span id="tls-cert-cn" style="color: var(--text-primary); font-family: var(--font-mono);"></span></div>
+                                <div><strong>Organization (O):</strong> <span id="tls-cert-o" style="color: var(--text-primary);"></span></div>
+                                <div><strong>Location (L/ST/C):</strong> <span id="tls-cert-loc" style="color: var(--text-primary);"></span></div>
+                                <div><strong>Issuer CA Name:</strong> <span id="tls-cert-issuer" style="color: var(--text-primary); font-family: var(--font-mono);"></span></div>
+                            </div>
+                        </div>
+
+                        <!-- Status Alert Banner -->
+                        <div id="tls-result-banner" class="status-banner hidden">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Handshake Step-by-Step Visualization -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="output-card" style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div class="output-header">
+                                <span class="output-label">TLS 1.3 Key Exchange (1-RTT) Visualizer</span>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;" id="tls-stepper-container">
+                                <!-- Step 1: TCP Handshake -->
+                                <div class="insight-item" id="step-tcp" style="opacity: 0.3; transition: opacity 0.3s ease;">
+                                    <i class="fa-solid fa-circle-nodes" style="color: var(--neon-blue); font-size: 1.1rem; margin-top: 0.15rem;"></i>
+                                    <div>
+                                        <div class="insight-header" style="font-size: 0.9rem;">1. TCP Three-Way Handshake</div>
+                                        <div style="font-size: 0.8rem;">TCP SYN -> SYN/ACK -> ACK established on port 5000.</div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 2: Client Hello -->
+                                <div class="insight-item" id="step-client-hello" style="opacity: 0.3; transition: opacity 0.3s ease;">
+                                    <i class="fa-solid fa-arrow-right-to-bracket" style="color: var(--neon-purple); font-size: 1.1rem; margin-top: 0.15rem;"></i>
+                                    <div>
+                                        <div class="insight-header" style="font-size: 0.9rem;">2. Client Hello (Key Share Offer)</div>
+                                        <div style="font-size: 0.8rem;">Client sends TLS version (1.3), cipher suites, and ECDH public key share.</div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 3: Server Hello -->
+                                <div class="insight-item" id="step-server-hello" style="opacity: 0.3; transition: opacity 0.3s ease;">
+                                    <i class="fa-solid fa-arrow-left-from-line" style="color: var(--neon-purple); font-size: 1.1rem; margin-top: 0.15rem;"></i>
+                                    <div>
+                                        <div class="insight-header" style="font-size: 0.9rem;">3. Server Hello (Key Share Selected)</div>
+                                        <div style="font-size: 0.8rem;">Server selects cipher suite & key share. Both compute the Shared Secret.</div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 4: Server Encryption & Certificate -->
+                                <div class="insight-item" id="step-server-cert" style="opacity: 0.3; transition: opacity 0.3s ease;">
+                                    <i class="fa-solid fa-key" style="color: var(--neon-yellow); font-size: 1.1rem; margin-top: 0.15rem;"></i>
+                                    <div>
+                                        <div class="insight-header" style="font-size: 0.9rem;">4. Server Certificate & Finished (Encrypted)</div>
+                                        <div style="font-size: 0.8rem;">Server transmits encrypted certificate, signature verify, and Finished MAC.</div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 5: Client Finished -->
+                                <div class="insight-item" id="step-client-finished" style="opacity: 0.3; transition: opacity 0.3s ease;">
+                                    <i class="fa-solid fa-circle-check" style="color: var(--neon-green); font-size: 1.1rem; margin-top: 0.15rem;"></i>
+                                    <div>
+                                        <div class="insight-header" style="font-size: 0.9rem;">5. Client Finished & Channel Secured</div>
+                                        <div style="font-size: 0.8rem;">Client verifies server signature and replies Finished. Symmetric session active.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 QuantumShield Cryptographic Suite. Secure local processing powered by Web Crypto API.</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

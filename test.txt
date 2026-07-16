@@ -1,0 +1,1 @@
+Hello, this is a secure message. QuantumShield is working! We are testing AES-GCM 256-bit encryption with SHA-256 integrity verification.
