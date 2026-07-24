@@ -1604,7 +1604,546 @@ window.addEventListener('DOMContentLoaded', () => {
             tlsInput.value = `${protocol}//${host}:5000/api/tls-details`;
         }
     }
+    // Initialize PQC stepper
+    resetPqcExchange();
+    // Initialize HNDL simulator
+    resetHndlSimulation();
 });
+
+// PQC ML-KEM exchange state
+let pqcKeyPair = { publicKey: '', privateKey: '' };
+let pqcCiphertext = '';
+let pqcSharedSecretBob = '';
+let pqcSharedSecretAlice = '';
+
+function resetPqcExchange() {
+    pqcKeyPair = { publicKey: '', privateKey: '' };
+    pqcCiphertext = '';
+    pqcSharedSecretBob = '';
+    pqcSharedSecretAlice = '';
+
+    // Clear UI textareas
+    const pubArea = document.getElementById('pqc-alice-pub');
+    const privArea = document.getElementById('pqc-alice-priv');
+    const aliceCipherArea = document.getElementById('pqc-alice-ciphertext');
+    const aliceSharedArea = document.getElementById('pqc-alice-shared');
+    const bobPubArea = document.getElementById('pqc-bob-pub');
+    const bobCipherArea = document.getElementById('pqc-bob-ciphertext');
+    const bobSharedArea = document.getElementById('pqc-bob-shared');
+
+    if (pubArea) pubArea.value = '';
+    if (privArea) privArea.value = '';
+    if (aliceCipherArea) aliceCipherArea.value = '';
+    if (aliceSharedArea) aliceSharedArea.value = '';
+    if (bobPubArea) bobPubArea.value = '';
+    if (bobCipherArea) bobCipherArea.value = '';
+    if (bobSharedArea) bobSharedArea.value = '';
+
+    // Reset buttons
+    const btnSendPub = document.getElementById('btn-pqc-send-pub');
+    const btnEncap = document.getElementById('btn-pqc-encaps');
+    const btnSendCipher = document.getElementById('btn-pqc-send-ciphertext');
+    const btnDecaps = document.getElementById('btn-pqc-decaps');
+
+    if (btnSendPub) btnSendPub.disabled = true;
+    if (btnEncap) btnEncap.disabled = true;
+    if (btnSendCipher) btnSendCipher.disabled = true;
+    if (btnDecaps) btnDecaps.disabled = true;
+
+    // Reset stepper UI
+    setPqcStepActive(1);
+    
+    // Hide status banner
+    const banner = document.getElementById('pqc-result-banner');
+    if (banner) banner.classList.add('hidden');
+}
+
+function setPqcStepActive(stepNum) {
+    for (let i = 1; i <= 5; i++) {
+        const stepNode = document.getElementById(`pqc-flow-step-${i}`);
+        if (!stepNode) continue;
+        stepNode.className = 'pqc-step-node';
+        if (i < stepNum) {
+            stepNode.classList.add('completed');
+        } else if (i === stepNum) {
+            stepNode.classList.add('active');
+        }
+    }
+}
+
+async function generatePqcKeyPair() {
+    const alg = document.getElementById('pqc-algorithm').value;
+    const btn = document.getElementById('btn-pqc-keygen');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Generating...';
+    
+    try {
+        const url = `${getPqcBackendUrl()}/keygen?alg=${alg}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Server returned HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.status !== 'Success') {
+            throw new Error(data.message || 'Keypair generation failed');
+        }
+        
+        pqcKeyPair.publicKey = data.public_key;
+        pqcKeyPair.privateKey = data.private_key;
+        
+        document.getElementById('pqc-alice-pub').value = data.public_key;
+        document.getElementById('pqc-alice-priv').value = data.private_key;
+        
+        document.getElementById('btn-pqc-send-pub').disabled = false;
+        
+        setPqcStepActive(2);
+    } catch (err) {
+        console.error(err);
+        alert(`Error: ${err.message}. Make sure Flask server is running at port 5000 and trusted.`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+function sendPublicKeyToBob() {
+    const pubKey = pqcKeyPair.publicKey;
+    if (!pubKey) return;
+    
+    // Set Bob's public key textarea
+    document.getElementById('pqc-bob-pub').value = pubKey;
+    document.getElementById('btn-pqc-encaps').disabled = false;
+    document.getElementById('btn-pqc-send-pub').disabled = true;
+    
+    setPqcStepActive(3);
+}
+
+async function encapsulateAliceSecret() {
+    const alg = document.getElementById('pqc-algorithm').value;
+    const pubKey = pqcKeyPair.publicKey;
+    const btn = document.getElementById('btn-pqc-encaps');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Encapsulating...';
+    
+    try {
+        const url = `${getPqcBackendUrl()}/encap`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alg: alg, public_key: pubKey })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Server returned HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.status !== 'Success') {
+            throw new Error(data.message || 'Encapsulation failed');
+        }
+        
+        pqcCiphertext = data.ciphertext;
+        pqcSharedSecretBob = data.shared_secret;
+        
+        document.getElementById('pqc-bob-ciphertext').value = data.ciphertext;
+        document.getElementById('pqc-bob-shared').value = data.shared_secret;
+        
+        document.getElementById('btn-pqc-send-ciphertext').disabled = false;
+        
+        setPqcStepActive(4);
+    } catch (err) {
+        console.error(err);
+        alert(`Error: ${err.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+function sendCiphertextToAlice() {
+    if (!pqcCiphertext) return;
+    
+    document.getElementById('pqc-alice-ciphertext').value = pqcCiphertext;
+    document.getElementById('btn-pqc-decaps').disabled = false;
+    document.getElementById('btn-pqc-send-ciphertext').disabled = true;
+    
+    setPqcStepActive(5);
+}
+
+async function decapsulateBobSecret() {
+    const alg = document.getElementById('pqc-algorithm').value;
+    const privKey = pqcKeyPair.privateKey;
+    const c = pqcCiphertext;
+    const btn = document.getElementById('btn-pqc-decaps');
+    const originalHTML = btn.innerHTML;
+    const banner = document.getElementById('pqc-result-banner');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Decapsulating...';
+    
+    try {
+        const url = `${getPqcBackendUrl()}/decap`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alg: alg, private_key: privKey, ciphertext: c })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Server returned HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.status !== 'Success') {
+            throw new Error(data.message || 'Decapsulation failed');
+        }
+        
+        pqcSharedSecretAlice = data.shared_secret;
+        document.getElementById('pqc-alice-shared').value = data.shared_secret;
+        
+        const secretsMatch = (pqcSharedSecretAlice === pqcSharedSecretBob);
+        
+        if (secretsMatch) {
+            banner.className = 'status-banner success';
+            banner.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Shared Secret Established!</strong> Alice and Bob successfully synced a 256-bit secure post-quantum key.<br>Key: <code style="font-family: var(--font-mono); font-size: 0.8rem; word-break: break-all;">${pqcSharedSecretAlice}</code>`;
+            
+            // Mark last step as completed
+            for (let i = 1; i <= 5; i++) {
+                const el = document.getElementById(`pqc-flow-step-${i}`);
+                if (el) {
+                    el.className = 'pqc-step-node completed';
+                }
+            }
+        } else {
+            banner.className = 'status-banner error';
+            banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <strong>Key Sync Failed!</strong> Alice's decapsulated shared secret does not match Bob's encapsulated key.`;
+        }
+        
+        banner.classList.remove('hidden');
+    } catch (err) {
+        console.error(err);
+        alert(`Error: ${err.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+function getPqcBackendUrl() {
+    const host = window.location.hostname || 'localhost';
+    return `https://${host}:5000/api/mlkem`;
+}
+
+// -------------------------------------------------------------
+// HNDL (Harvest Now, Decrypt Later) Simulator
+// -------------------------------------------------------------
+
+let hndlState = {
+    plaintext: '',
+    ciphertext: '',
+    algo: 'RSA-2048',
+    hasHarvested: false,
+    era: 'present', // 'present' or 'future'
+    decrypted: false
+};
+
+function resetHndlSimulation() {
+    hndlState = {
+        plaintext: '',
+        ciphertext: '',
+        algo: 'RSA-2048',
+        hasHarvested: false,
+        era: 'present',
+        decrypted: false
+    };
+
+    // Reset UI inputs/textareas
+    const plainInput = document.getElementById('hndl-plaintext');
+    if (plainInput) plainInput.value = 'PROJECT_ORION_LAUNCH_CODES_2026';
+    
+    const cipherTextarea = document.getElementById('hndl-val-ciphertext');
+    if (cipherTextarea) cipherTextarea.value = '';
+    
+    const algoSpan = document.getElementById('hndl-val-algo');
+    if (algoSpan) algoSpan.textContent = '--';
+
+    const vaultStatus = document.getElementById('hndl-vault-status');
+    if (vaultStatus) {
+        vaultStatus.className = 'badge';
+        vaultStatus.style.background = 'rgba(100, 116, 139, 0.15)';
+        vaultStatus.style.color = 'var(--text-muted)';
+        vaultStatus.textContent = 'Empty';
+    }
+
+    const timelineBadge = document.getElementById('hndl-timeline-badge');
+    if (timelineBadge) {
+        timelineBadge.style.background = 'rgba(0, 180, 216, 0.15)';
+        timelineBadge.style.color = 'var(--neon-blue)';
+        timelineBadge.textContent = 'Current Era (2026)';
+    }
+
+    // Reset buttons
+    const btnTransmit = document.getElementById('btn-hndl-transmit');
+    const btnTimeJump = document.getElementById('btn-hndl-timejump');
+    const btnDecrypt = document.getElementById('btn-hndl-decrypt');
+
+    if (btnTransmit) btnTransmit.disabled = false;
+    if (btnTimeJump) btnTimeJump.disabled = true;
+    if (btnDecrypt) btnDecrypt.disabled = true;
+
+    // Reset step card opacities
+    const step2Card = document.getElementById('hndl-step-2-card');
+    const step3Card = document.getElementById('hndl-step-3-card');
+    if (step2Card) step2Card.style.opacity = '0.5';
+    if (step3Card) step3Card.style.opacity = '0.5';
+
+    // Reset animations & visualization
+    const packet = document.getElementById('hndl-packet');
+    const packetHarvested = document.getElementById('hndl-packet-harvested');
+    if (packet) {
+        packet.className = 'hidden';
+        packet.style.transform = '';
+    }
+    if (packetHarvested) {
+        packetHarvested.className = 'hidden';
+        packetHarvested.style.transform = '';
+    }
+
+    const adversaryNode = document.getElementById('node-adversary');
+    if (adversaryNode) adversaryNode.style.opacity = '0.4';
+
+    const canvas = document.getElementById('hndl-network-canvas');
+    if (canvas) canvas.classList.remove('active-quantum');
+
+    // Reset logs
+    const logs = document.getElementById('hndl-feed-logs');
+    if (logs) logs.innerHTML = '[System] Network Idle. Awaiting transmission...';
+
+    // Hide report & banners
+    const analysisCard = document.getElementById('hndl-analysis-card');
+    const resultBanner = document.getElementById('hndl-result-banner');
+    const progressContainer = document.getElementById('hndl-cracking-progress-container');
+    
+    if (analysisCard) analysisCard.classList.add('hidden');
+    if (resultBanner) resultBanner.classList.add('hidden');
+    if (progressContainer) progressContainer.classList.add('hidden');
+}
+
+function generateSimulatedHex(length) {
+    const chars = '0123456789abcdef';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars[Math.floor(Math.random() * 16)];
+    }
+    return result;
+}
+
+function logHndlMessage(msg, isAlert = false) {
+    const logs = document.getElementById('hndl-feed-logs');
+    if (!logs) return;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const color = isAlert ? 'var(--neon-red)' : 'var(--text-secondary)';
+    logs.innerHTML += `<br><span style="color: ${color}">[${time}] ${msg}</span>`;
+    logs.scrollTop = logs.scrollHeight;
+}
+
+function hndlTransmit() {
+    const plainInput = document.getElementById('hndl-plaintext');
+    const algoSelect = document.getElementById('hndl-algo');
+    
+    const plaintext = plainInput ? plainInput.value.trim() : '';
+    if (!plaintext) {
+        alert('Please enter a payload message to transmit.');
+        return;
+    }
+
+    hndlState.plaintext = plaintext;
+    hndlState.algo = algoSelect ? algoSelect.value : 'RSA-2048';
+    
+    // Generate simulated ciphertext based on algorithm
+    const cipherLen = hndlState.algo === 'RSA-2048' ? 256 : 512;
+    hndlState.ciphertext = generateSimulatedHex(cipherLen);
+
+    // Disable transmit button during animation
+    const btnTransmit = document.getElementById('btn-hndl-transmit');
+    if (btnTransmit) btnTransmit.disabled = true;
+
+    logHndlMessage(`Initiating secure transmission using ${hndlState.algo}...`);
+    
+    const packet = document.getElementById('hndl-packet');
+    const packetHarvested = document.getElementById('hndl-packet-harvested');
+    
+    if (packet) {
+        packet.className = 'packet-animating';
+    }
+
+    // Intercepted harvest animation trigger halfway through
+    setTimeout(() => {
+        logHndlMessage('Eve (Adversary) intercepted raw optical fiber packet.', true);
+        if (packetHarvested) {
+            packetHarvested.className = 'packet-harvesting';
+        }
+    }, 750);
+
+    // End of packet transmission
+    setTimeout(() => {
+        logHndlMessage(`Transmission completed. Bob (Server) processed TLS Key Exchange.`);
+        logHndlMessage(`Eve stored the intercepted ciphertext in her persistent storage vault for future use.`, true);
+
+        // Update database vault UI
+        const vaultAlgo = document.getElementById('hndl-val-algo');
+        if (vaultAlgo) vaultAlgo.textContent = hndlState.algo;
+
+        const vaultCipher = document.getElementById('hndl-val-ciphertext');
+        if (vaultCipher) vaultCipher.value = hndlState.ciphertext;
+
+        const vaultStatus = document.getElementById('hndl-vault-status');
+        if (vaultStatus) {
+            vaultStatus.className = 'badge badge-red';
+            vaultStatus.style.background = 'rgba(239, 71, 111, 0.15)';
+            vaultStatus.style.color = 'var(--neon-red)';
+            vaultStatus.textContent = 'Harvested (Encrypted)';
+        }
+
+        const adversaryNode = document.getElementById('node-adversary');
+        if (adversaryNode) adversaryNode.style.opacity = '1';
+
+        // Enable step 2 time jump
+        const btnTimeJump = document.getElementById('btn-hndl-timejump');
+        if (btnTimeJump) btnTimeJump.disabled = false;
+        
+        const step2Card = document.getElementById('hndl-step-2-card');
+        if (step2Card) step2Card.style.opacity = '1';
+
+        hndlState.hasHarvested = true;
+    }, 1500);
+}
+
+function hndlTimeJump() {
+    if (!hndlState.hasHarvested) return;
+
+    hndlState.era = 'future';
+
+    logHndlMessage('System Event: Advancing timeline to Year 2035...');
+    logHndlMessage('Notice: Cryptanalytically Relevant Quantum Computers (CRQCs) are now operational in government and intelligence agencies.');
+    logHndlMessage('Eve deploys quantum processing grids to decrypt archived historical files.', true);
+
+    const timelineBadge = document.getElementById('hndl-timeline-badge');
+    if (timelineBadge) {
+        timelineBadge.style.background = 'rgba(157, 78, 221, 0.2)';
+        timelineBadge.style.color = 'var(--neon-purple)';
+        timelineBadge.textContent = 'Future Era (2035)';
+    }
+
+    const canvas = document.getElementById('hndl-network-canvas');
+    if (canvas) canvas.classList.add('active-quantum');
+
+    // Disable time jump button and enable decrypt button
+    const btnTimeJump = document.getElementById('btn-hndl-timejump');
+    if (btnTimeJump) btnTimeJump.disabled = true;
+
+    const btnDecrypt = document.getElementById('btn-hndl-decrypt');
+    if (btnDecrypt) btnDecrypt.disabled = false;
+
+    const step3Card = document.getElementById('hndl-step-3-card');
+    if (step3Card) step3Card.style.opacity = '1';
+}
+
+function hndlDecrypt() {
+    if (hndlState.era !== 'future') return;
+
+    const btnDecrypt = document.getElementById('btn-hndl-decrypt');
+    if (btnDecrypt) btnDecrypt.disabled = true;
+
+    // Show progress and analysis card
+    const analysisCard = document.getElementById('hndl-analysis-card');
+    if (analysisCard) analysisCard.classList.remove('hidden');
+
+    const progressContainer = document.getElementById('hndl-cracking-progress-container');
+    if (progressContainer) progressContainer.classList.remove('hidden');
+
+    const resultBanner = document.getElementById('hndl-result-banner');
+    if (resultBanner) resultBanner.classList.add('hidden');
+
+    const progressBar = document.getElementById('hndl-progress-bar');
+    const progressLabel = document.getElementById('hndl-progress-label');
+    const progressPct = document.getElementById('hndl-progress-pct');
+
+    let percent = 0;
+    const isRsa = hndlState.algo === 'RSA-2048';
+
+    logHndlMessage(`Starting quantum cryptanalysis against archived ${hndlState.algo} session...`, true);
+
+    const interval = setInterval(() => {
+        percent += 4;
+        if (progressBar) progressBar.style.width = `${percent}%`;
+        if (progressPct) progressPct.textContent = `${percent}%`;
+
+        // Update descriptions
+        if (percent < 25) {
+            if (progressLabel) progressLabel.textContent = 'Initializing quantum qubits registry...';
+        } else if (percent < 55) {
+            if (progressLabel) progressLabel.textContent = 'Configuring Quantum Fourier Transform (QFT)...';
+        } else if (percent < 85) {
+            if (progressLabel) {
+                progressLabel.textContent = isRsa 
+                    ? 'Executing Shor\'s factorisation algorithm (factoring modulus N)...' 
+                    : 'Running lattice reduction algorithms (SVP sieve solver on Module-LWE)...';
+            }
+        } else {
+            if (progressLabel) progressLabel.textContent = 'Collapsing quantum superposition state to classical output...';
+        }
+
+        if (percent >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+                if (progressContainer) progressContainer.classList.add('hidden');
+                
+                const vaultStatus = document.getElementById('hndl-vault-status');
+
+                if (isRsa) {
+                    logHndlMessage(`Cryptanalysis Success: Modulus factored! Session private key generated.`, true);
+                    logHndlMessage(`Plaintext decrypted: "${hndlState.plaintext}"`, true);
+
+                    if (vaultStatus) {
+                        vaultStatus.className = 'badge badge-red';
+                        vaultStatus.style.background = 'rgba(239, 71, 111, 0.25)';
+                        vaultStatus.style.color = 'var(--neon-red)';
+                        vaultStatus.textContent = 'Decrypted / Compromised';
+                    }
+
+                    if (resultBanner) {
+                        resultBanner.className = 'status-banner error';
+                        resultBanner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <div><strong>Confidentiality Compromised!</strong> The quantum computer successfully factored the RSA public key. The session key was recovered, and Alice's historical message was decrypted:<br><code style="font-family: var(--font-mono); color: var(--neon-red); font-weight: bold; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 0.5rem; border: 1px solid rgba(239,71,111,0.2);">${hndlState.plaintext}</code></div>`;
+                        resultBanner.classList.remove('hidden');
+                    }
+                } else {
+                    logHndlMessage(`Cryptanalysis Failed: Shor's algorithm has no effect on Module-LWE problem. Lattice reduction remained computationally infeasible.`);
+                    logHndlMessage(`Notice: ML-KEM session key remains secure. Decryption failed.`);
+
+                    if (vaultStatus) {
+                        vaultStatus.className = 'badge badge-green';
+                        vaultStatus.style.background = 'rgba(6, 214, 160, 0.25)';
+                        vaultStatus.style.color = 'var(--neon-green)';
+                        vaultStatus.textContent = 'Secured (Lattice-Proof)';
+                    }
+
+                    if (resultBanner) {
+                        resultBanner.className = 'status-banner success';
+                        resultBanner.innerHTML = `<i class="fa-solid fa-circle-check"></i> <div><strong>Confidentiality Preserved!</strong> The quantum computer ran SVP lattice sieve reduction algorithms for days but failed to crack the Module-LWE mathematical structure. The ciphertext remains secure, and Alice's historical message is fully protected.</div>`;
+                        resultBanner.classList.remove('hidden');
+                    }
+                }
+            }, 500);
+        }
+    }, 100);
+}
+
 
 
 

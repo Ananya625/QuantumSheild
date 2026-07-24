@@ -598,3 +598,137 @@ footer {
     border-color: rgba(239, 71, 111, 0.3) !important;
     background: rgba(239, 71, 111, 0.05) !important;
 }
+
+/* PQC Stepper Node Styles */
+.pqc-step-node {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    font-weight: 500;
+    opacity: 0.4;
+    transition: all 0.3s ease;
+}
+
+.pqc-step-node.active {
+    opacity: 1;
+    background: rgba(0, 242, 254, 0.05);
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+    color: var(--text-primary);
+}
+
+.pqc-step-node.completed {
+    opacity: 0.8;
+    background: rgba(6, 214, 160, 0.05);
+    border-color: var(--neon-green);
+    color: var(--text-primary);
+}
+
+.step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    font-weight: bold;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+}
+
+.pqc-step-node.active .step-num {
+    background: var(--neon-blue);
+    color: #000;
+}
+
+.pqc-step-node.completed .step-num {
+    background: var(--neon-green);
+    color: #000;
+}
+
+.step-arrow {
+    color: var(--text-secondary);
+    opacity: 0.3;
+}
+
+.btn-purple {
+    background: linear-gradient(135deg, #a855f7, #7c3aed) !important;
+    color: white !important;
+}
+
+.btn-purple:hover:not(:disabled) {
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.4) !important;
+    transform: translateY(-1px);
+}
+
+.btn-purple:disabled {
+    background: rgba(124, 58, 237, 0.2) !important;
+    border-color: rgba(124, 58, 237, 0.1) !important;
+    color: rgba(255, 255, 255, 0.2) !important;
+    cursor: not-allowed;
+}
+
+/* -------------------------------------------------------------
+   HNDL Simulation specific styles
+   ------------------------------------------------------------- */
+.hndl-node {
+    padding: 0.5rem;
+    transition: var(--transition-smooth);
+}
+
+.hndl-node i {
+    filter: drop-shadow(0 0 5px currentColor);
+}
+
+@keyframes packetTransmit {
+    0% { transform: translate(0, 0); opacity: 0; }
+    10% { opacity: 1; }
+    50% { transform: translate(160px, 0); }
+    90% { opacity: 1; }
+    100% { transform: translate(320px, 0); opacity: 0; }
+}
+
+@keyframes packetHarvest {
+    0% { transform: translate(160px, 0); opacity: 1; }
+    100% { transform: translate(160px, 60px); opacity: 0; }
+}
+
+.packet-animating {
+    animation: packetTransmit 1.5s forwards cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.packet-harvesting {
+    animation: packetHarvest 0.8s forwards ease-in-out;
+}
+
+#hndl-network-canvas.active-quantum {
+    border-color: var(--neon-purple);
+    box-shadow: 0 0 15px rgba(157, 78, 221, 0.2);
+}
+
+#hndl-network-canvas.active-quantum::before {
+    content: "QUANTUM ERA ACTIVE";
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    color: var(--neon-purple);
+    font-weight: bold;
+    border: 1px solid var(--neon-purple);
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(157, 78, 221, 0.1);
+    animation: pulse 2s infinite alternate;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
+}

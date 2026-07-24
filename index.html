@@ -6,7 +6,7 @@
     <title>Quantum Shield - RSA Cryptographic Suite</title>
     <meta name="description" content="Generate RSA keys, encrypt and decrypt messages, and securely sign or verify files using client-side Web Crypto API.">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
@@ -42,6 +42,12 @@
             </button>
             <button class="tab-btn" id="btn-tab-tls" onclick="switchTab('tab-tls')">
                 <i class="fa-solid fa-network-wired"></i> TLS Handshake Demo
+            </button>
+            <button class="tab-btn" id="btn-tab-pqc" onclick="switchTab('tab-pqc')">
+                <i class="fa-solid fa-diagram-project"></i> PQC Key Exchange
+            </button>
+            <button class="tab-btn" id="btn-tab-hndl" onclick="switchTab('tab-hndl')">
+                <i class="fa-solid fa-user-secret"></i> HNDL Attack Demo
             </button>
         </nav>
 
@@ -629,12 +635,343 @@
                 </div>
             </div>
         </section>
+
+        <!-- Tab 7: PQC Key Exchange (ML-KEM) -->
+        <section id="tab-pqc" class="tab-content">
+            <div class="crypto-card">
+                <h1 class="card-title">
+                    <i class="fa-solid fa-diagram-project"></i> ML-KEM Post-Quantum Key Encapsulation (FIPS 203)
+                </h1>
+                <p style="color: var(--text-secondary); margin-top: -1rem; font-size: 0.9rem;">
+                    Establish a secure post-quantum shared secret key between Alice (Receiver) and Bob (Sender) using the NIST-standardized ML-KEM key encapsulation mechanism.
+                </p>
+
+                <!-- Configuration Row -->
+                <div class="grid-2" style="margin-bottom: 2rem;">
+                    <div class="form-group">
+                        <label for="pqc-algorithm">ML-KEM Parameter Set</label>
+                        <select id="pqc-algorithm" onchange="resetPqcExchange()">
+                            <option value="ML-KEM-512">ML-KEM-512 (NIST Category 1, equivalent to AES-128)</option>
+                            <option value="ML-KEM-768" selected>ML-KEM-768 (NIST Category 3, equivalent to AES-192 - Recommended)</option>
+                            <option value="ML-KEM-1024">ML-KEM-1024 (NIST Category 5, equivalent to AES-256)</option>
+                        </select>
+                        <span class="helper-text">Select the security level for the Module-Lattice-Based Key Encapsulation.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Post-Quantum Security Note</label>
+                        <div style="background: rgba(147, 51, 234, 0.05); border: 1px solid rgba(147, 51, 234, 0.2); border-radius: 8px; padding: 0.8rem; font-size: 0.85rem; color: var(--text-secondary); display: flex; gap: 0.50rem; align-items: flex-start;">
+                            <i class="fa-solid fa-user-shield" style="color: var(--neon-purple); margin-top: 0.15rem;"></i>
+                            <span>ML-KEM is mathematically secure against attacks by future large-scale quantum computers, solving the lattice-based Shortest Vector Problem.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Columns -->
+                <div class="grid-2">
+                    
+                    <!-- Left: Alice (Receiver) -->
+                    <div class="output-card" style="display: flex; flex-direction: column; gap: 1rem; border-color: rgba(0, 242, 254, 0.2);">
+                        <div class="output-header" style="border-bottom: 1px solid rgba(0, 242, 254, 0.1);">
+                            <span class="output-label" style="color: var(--neon-blue); font-size: 1.1rem;"><i class="fa-solid fa-user-astronaut"></i> Alice (Receiver)</span>
+                            <span class="badge badge-blue">Party A</span>
+                        </div>
+
+                        <!-- Step 1: Keygen -->
+                        <div class="form-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <label style="margin-bottom: 0;">1. Key Generation</label>
+                                <button class="btn btn-secondary btn-small" id="btn-pqc-keygen" onclick="generatePqcKeyPair()">
+                                    <i class="fa-solid fa-gears"></i> Generate Key Pair
+                                </button>
+                            </div>
+                            <label for="pqc-alice-pub">Public Encapsulation Key (Hex)</label>
+                            <textarea id="pqc-alice-pub" readonly placeholder="Alice's public key will appear here..." style="font-family: var(--font-mono); font-size: 0.75rem; min-height: 80px;"></textarea>
+                            
+                            <label for="pqc-alice-priv" style="margin-top: 0.5rem;">Private Decapsulation Key (Hex)</label>
+                            <textarea id="pqc-alice-priv" readonly placeholder="Alice's private key will appear here..." style="font-family: var(--font-mono); font-size: 0.75rem; min-height: 80px;"></textarea>
+                        </div>
+
+                        <!-- Step 2: Send Key -->
+                        <div class="btn-group">
+                            <button class="btn" id="btn-pqc-send-pub" onclick="sendPublicKeyToBob()" disabled style="width: 100%;">
+                                <i class="fa-solid fa-paper-plane"></i> Send Public Key to Bob <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+
+                        <!-- Step 5: Decapsulation -->
+                        <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                            <label>3. Decapsulation</label>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <label style="margin-bottom: 0;" for="pqc-alice-ciphertext">Ciphertext received from Bob</label>
+                                <button class="btn btn-secondary btn-small" id="btn-pqc-decaps" onclick="decapsulateBobSecret()" disabled>
+                                    <i class="fa-solid fa-unlock-keyhole"></i> Decapsulate Ciphertext
+                                </button>
+                            </div>
+                            <textarea id="pqc-alice-ciphertext" readonly placeholder="Ciphertext received from Bob will appear here..." style="font-family: var(--font-mono); font-size: 0.75rem; min-height: 80px;"></textarea>
+                            
+                            <label for="pqc-alice-shared" style="margin-top: 0.5rem;">Alice's Established Shared Secret (Hex)</label>
+                            <textarea id="pqc-alice-shared" readonly placeholder="Alice's shared secret key will appear here..." style="font-family: var(--font-mono); font-size: 0.75rem; min-height: 50px; height: 50px; color: var(--neon-blue); font-weight: bold;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Right: Bob (Sender) -->
+                    <div class="output-card" style="display: flex; flex-direction: column; gap: 1rem; border-color: rgba(147, 51, 234, 0.2);">
+                        <div class="output-header" style="border-bottom: 1px solid rgba(147, 51, 234, 0.1);">
+                            <span class="output-label" style="color: var(--neon-purple); font-size: 1.1rem;"><i class="fa-solid fa-user-ninja"></i> Bob (Sender)</span>
+                            <span class="badge badge-purple">Party B</span>
+                        </div>
+
+                        <!-- Step 3: Public Key Input & Encap -->
+                        <div class="form-group">
+                            <label for="pqc-bob-pub">Alice's Public Encapsulation Key (Hex)</label>
+                            <textarea id="pqc-bob-pub" readonly placeholder="Bob waits for Alice's public key..." style="font-family: var(--font-mono); font-size: 0.75rem; min-height: 80px;"></textarea>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; margin-bottom: 0.5rem;">
+                                <label style="margin-bottom: 0;">2. Encapsulation</label>
+                                <button class="btn btn-secondary btn-small" id="btn-pqc-encaps" onclick="encapsulateAliceSecret()" disabled>
+                                    <i class="fa-solid fa-box-archive"></i> Encapsulate Shared Secret
+                                </button>
+                            </div>
+                            <label for="pqc-bob-ciphertext">Resulting Ciphertext (Hex)</label>
+                            <textarea id="pqc-bob-ciphertext" readonly placeholder="Bob's ciphertext output will appear here..." style="font-family: var(--font-mono); font-size: 0.75rem; min-height: 80px;"></textarea>
+                            
+                            <label for="pqc-bob-shared" style="margin-top: 0.5rem;">Bob's Established Shared Secret (Hex)</label>
+                            <textarea id="pqc-bob-shared" readonly placeholder="Bob's shared secret key will appear here..." style="font-family: var(--font-mono); font-size: 0.75rem; min-height: 50px; height: 50px; color: var(--neon-purple); font-weight: bold;"></textarea>
+                        </div>
+
+                        <!-- Step 4: Send Ciphertext -->
+                        <div class="btn-group">
+                            <button class="btn btn-purple" id="btn-pqc-send-ciphertext" onclick="sendCiphertextToAlice()" disabled style="width: 100%;">
+                                <i class="fa-solid fa-reply"></i> Send Ciphertext to Alice <i class="fa-solid fa-arrow-left"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Handshake Steps Visualizer & Secret Verification -->
+                <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1.5rem;">
+                    
+                    <!-- Steps Tracker -->
+                    <div class="output-card">
+                        <div class="output-header">
+                            <span class="output-label">ML-KEM Key Exchange Flow Diagram</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-around; align-items: center; padding: 1rem 0; font-size: 0.85rem; color: var(--text-secondary); gap: 0.5rem; flex-wrap: wrap;">
+                            <div class="pqc-step-node" id="pqc-flow-step-1">
+                                <span class="step-num">1</span> Generate Keypair
+                            </div>
+                            <i class="fa-solid fa-chevron-right step-arrow"></i>
+                            <div class="pqc-step-node" id="pqc-flow-step-2">
+                                <span class="step-num">2</span> Share Public Key
+                            </div>
+                            <i class="fa-solid fa-chevron-right step-arrow"></i>
+                            <div class="pqc-step-node" id="pqc-flow-step-3">
+                                <span class="step-num">3</span> Encapsulate Secret
+                            </div>
+                            <i class="fa-solid fa-chevron-right step-arrow"></i>
+                            <div class="pqc-step-node" id="pqc-flow-step-4">
+                                <span class="step-num">4</span> Send Ciphertext
+                            </div>
+                            <i class="fa-solid fa-chevron-right step-arrow"></i>
+                            <div class="pqc-step-node" id="pqc-flow-step-5">
+                                <span class="step-num">5</span> Decapsulate & Sync
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PQC Status Banner -->
+                    <div id="pqc-result-banner" class="status-banner hidden">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 8: HNDL Attack Demo -->
+        <section id="tab-hndl" class="tab-content">
+            <div class="crypto-card">
+                <h1 class="card-title">
+                    <i class="fa-solid fa-user-secret"></i> Harvest Now, Decrypt Later (HNDL) Simulator
+                </h1>
+                <p style="color: var(--text-secondary); margin-top: -1rem; font-size: 0.9rem;">
+                    See how a quantum adversary intercepts and stores traditional (RSA) encrypted traffic today, only to decrypt it years later when a quantum computer is built. Contrast this with quantum-resistant ML-KEM.
+                </p>
+
+                <div class="grid-2">
+                    <!-- Left Panel: Interactive Console -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="output-card" style="border-color: rgba(0, 180, 216, 0.2);">
+                            <div class="output-header" style="border-bottom: 1px solid rgba(0, 180, 216, 0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                                <span class="output-label" style="color: var(--neon-blue);"><i class="fa-solid fa-server"></i> Present Day (Step 1)</span>
+                                <span class="badge badge-blue">Interactive Transmission</span>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="hndl-algo">Select Public-Key Protocol</label>
+                                <select id="hndl-algo">
+                                    <option value="RSA-2048">RSA 2048-bit (Standard Public Key)</option>
+                                    <option value="ML-KEM-768">ML-KEM 768-bit (Post-Quantum Key Encapsulation)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label for="hndl-plaintext">Sensitive Payload Message</label>
+                                <input type="text" id="hndl-plaintext" value="PROJECT_ORION_LAUNCH_CODES_2026" placeholder="Enter sensitive text to transmit...">
+                            </div>
+
+                            <button class="btn" id="btn-hndl-transmit" onclick="hndlTransmit()" style="width: 100%;">
+                                <i class="fa-solid fa-paper-plane"></i> Encrypt & Transmit
+                            </button>
+                        </div>
+
+                        <!-- Step 2: Time Jump -->
+                        <div class="output-card" id="hndl-step-2-card" style="opacity: 0.5; transition: var(--transition-smooth); border-color: rgba(255, 209, 102, 0.2);">
+                            <div class="output-header" style="border-bottom: 1px solid rgba(255, 209, 102, 0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                                <span class="output-label" style="color: var(--neon-yellow);"><i class="fa-solid fa-hourglass-half"></i> The Timeline (Step 2)</span>
+                                <span class="badge badge-blue" style="background: rgba(255, 209, 102, 0.15); color: var(--neon-yellow);" id="hndl-timeline-badge">Current Era (2026)</span>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                                Jump forward in time to the era of Cryptanalytically Relevant Quantum Computers (CRQCs) capable of executing Shor's Algorithm.
+                            </p>
+                            <button class="btn btn-secondary" id="btn-hndl-timejump" onclick="hndlTimeJump()" disabled style="width: 100%;">
+                                <i class="fa-solid fa-forward-fast"></i> Jump to Year 2035 (CRQC Era)
+                            </button>
+                        </div>
+
+                        <!-- Step 3: Decrypt -->
+                        <div class="output-card" id="hndl-step-3-card" style="opacity: 0.5; transition: var(--transition-smooth); border-color: rgba(239, 71, 111, 0.2);">
+                            <div class="output-header" style="border-bottom: 1px solid rgba(239, 71, 111, 0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                                <span class="output-label" style="color: var(--neon-red);"><i class="fa-solid fa-unlock-keyhole"></i> Quantum Cryptanalysis (Step 3)</span>
+                                <span class="badge badge-red">Decryption Attempt</span>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                                The adversary triggers a decryption attack against the stored ciphertext using their newly built quantum computer.
+                            </p>
+                            <button class="btn btn-danger" id="btn-hndl-decrypt" onclick="hndlDecrypt()" disabled style="width: 100%;">
+                                <i class="fa-solid fa-microchip"></i> Execute Quantum Decryption
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Visualizer & Adversary Vault -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        
+                        <!-- Interception Visualization Network Graph -->
+                        <div class="output-card" style="flex: 1; display: flex; flex-direction: column; min-height: 250px;">
+                            <div class="output-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                                <span class="output-label"><i class="fa-solid fa-network-wired"></i> Live Network & Interception Feed</span>
+                            </div>
+                            
+                            <div id="hndl-network-canvas" style="flex: 1; min-height: 180px; position: relative; background: rgba(8, 11, 17, 0.7); border-radius: 8px; border: 1px solid var(--border-color); margin-top: 0.75rem; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1.5rem; padding: 1rem;">
+                                
+                                <!-- Nodes -->
+                                <div style="display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 0 1rem; position: relative; z-index: 2;">
+                                    <div class="hndl-node" id="node-sender" style="text-align: center;">
+                                        <i class="fa-solid fa-laptop" style="font-size: 2rem; color: var(--neon-blue);"></i>
+                                        <div style="font-size: 0.75rem; margin-top: 0.25rem; font-weight: 600;">Alice (Client)</div>
+                                    </div>
+
+                                    <!-- Interceptor Node in middle, slightly lower -->
+                                    <div class="hndl-node" id="node-adversary" style="text-align: center; margin-top: 4rem; opacity: 0.4; transition: var(--transition-smooth);">
+                                        <i class="fa-solid fa-user-ninja" style="font-size: 2rem; color: var(--neon-red);"></i>
+                                        <div style="font-size: 0.75rem; margin-top: 0.25rem; font-weight: 600; color: var(--neon-red);">Eve (Interceptor)</div>
+                                    </div>
+
+                                    <div class="hndl-node" id="node-receiver" style="text-align: center;">
+                                        <i class="fa-solid fa-server" style="font-size: 2rem; color: var(--neon-green);"></i>
+                                        <div style="font-size: 0.75rem; margin-top: 0.25rem; font-weight: 600;">Bob (Server)</div>
+                                    </div>
+                                </div>
+
+                                <!-- Connecting Lines (Dotted background) -->
+                                <div style="position: absolute; width: 80%; height: 2px; border-bottom: 2px dashed rgba(255,255,255,0.15); top: 38%; left: 10%; z-index: 1;"></div>
+                                
+                                <!-- Animated Packet -->
+                                <div id="hndl-packet" class="hidden" style="position: absolute; top: 34%; left: 10%; z-index: 3; color: var(--neon-purple); transform: translateX(0); font-size: 1.2rem;">
+                                    <i class="fa-solid fa-envelope-shield"></i>
+                                </div>
+                                <div id="hndl-packet-harvested" class="hidden" style="position: absolute; top: 34%; left: 46%; z-index: 3; color: var(--neon-red); font-size: 1.2rem; transform: translateY(0);">
+                                    <i class="fa-solid fa-download"></i>
+                                </div>
+
+                                <!-- Intercept Feed Logs -->
+                                <div id="hndl-feed-logs" style="width: 100%; height: 60px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); background: rgba(0,0,0,0.3); border-radius: 4px; padding: 0.5rem; overflow-y: auto; border: 1px solid rgba(255,255,255,0.03);">
+                                    [System] Network Idle. Awaiting transmission...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Adversary Database Vault -->
+                        <div class="output-card" style="border-color: rgba(239, 71, 111, 0.15);">
+                            <div class="output-header" style="border-bottom: 1px solid rgba(239, 71, 111, 0.1); padding-bottom: 0.5rem;">
+                                <span class="output-label" style="color: var(--neon-red);"><i class="fa-solid fa-database"></i> Eve's Stored Ciphertext Database Vault</span>
+                            </div>
+                            
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem;">
+                                <div><strong>Harvested Session Algorithm:</strong> <span id="hndl-val-algo" style="color: var(--text-primary); font-family: var(--font-mono);">--</span></div>
+                                <div><strong>Stored Ciphertext (Hex):</strong></div>
+                                <textarea id="hndl-val-ciphertext" readonly placeholder="No ciphertext harvested yet..." style="font-family: var(--font-mono); font-size: 0.7rem; min-height: 50px; height: 50px; background: rgba(0,0,0,0.2);"></textarea>
+                                
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                                    <strong>Status:</strong> 
+                                    <span class="badge badge-blue" id="hndl-vault-status" style="background: rgba(100, 116, 139, 0.15); color: var(--text-muted);">Empty</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Output Analysis Banner -->
+                <div id="hndl-analysis-card" class="output-card hidden" style="animation: fadeIn 0.4s ease-out; margin-top: 1rem;">
+                    <div class="output-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                        <span class="output-label" style="color: var(--text-primary); font-size: 1rem;"><i class="fa-solid fa-brain"></i> Cryptanalytic Analysis Report</span>
+                    </div>
+
+                    <div id="hndl-cracking-progress-container" class="hidden" style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem;">
+                            <span id="hndl-progress-label">Shor's Algorithm execution progress...</span>
+                            <span id="hndl-progress-pct">0%</span>
+                        </div>
+                        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.05); border-radius: 100px; overflow: hidden; border: 1px solid var(--border-color);">
+                            <div id="hndl-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--neon-red), var(--neon-purple)); transition: width 0.1s linear;"></div>
+                        </div>
+                    </div>
+
+                    <div id="hndl-result-banner" class="status-banner hidden">
+                        <!-- Success/failure dynamic explanation -->
+                    </div>
+
+                    <div class="grid-2" style="margin-top: 1.5rem;" id="hndl-comparative-insights">
+                        <!-- RSA vs PQC details -->
+                        <div class="insight-item con">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <div>
+                                <div class="insight-header">Traditional Algorithms (RSA / ECC)</div>
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                    Traditional cryptographic methods rely on mathematical problems like integer factorization (RSA) or discrete logarithms (ECC/DH). A large-scale quantum computer using Shor's algorithm can solve these problems in polynomial time, exposing historical sessions.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="insight-item pro">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <div>
+                                <div class="insight-header">Lattice-Based Security (ML-KEM)</div>
+                                <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                    ML-KEM (standardized by NIST in FIPS 203) is built on the hardness of the Module Learning-With-Errors (MLWE) problem. There are no known classical or quantum algorithms that can break this structure in polynomial time, securing data even after a quantum jump.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer>
         <p>&copy; 2026 QuantumShield Cryptographic Suite. Secure local processing powered by Web Crypto API.</p>
     </footer>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
 </body>
 </html>

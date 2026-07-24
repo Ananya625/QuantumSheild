@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quantum Key Distribution (BB84) Interactive Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>QuantumCrypt</h1>
+        <div class="brand-subtitle">BB84 Learning Lab</div>
+      </div>
+      
+      <nav class="nav-menu">
+        <li class="nav-item">
+          <button class="nav-btn active" data-module="1" onclick="switchModule(1)">
+            <span class="nav-num">1</span> Qubit & Measurement
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-module="2" onclick="switchModule(2)">
+            <span class="nav-num">2</span> Photon Encoding
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-module="3" onclick="switchModule(3)">
+            <span class="nav-num">3</span> Dual-Basis Encoding
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-module="4" onclick="switchModule(4)">
+            <span class="nav-num">4</span> Bob's Measurement
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-module="5" onclick="switchModule(5)">
+            <span class="nav-num">5</span> Basis Sifting
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-module="6" onclick="switchModule(6)">
+            <span class="nav-num">6</span> Shared Key Generation
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-module="7" onclick="switchModule(7)">
+            <span class="nav-num">7</span> Eavesdropping (Eve)
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-module="8" onclick="switchModule(8)">
+            <span class="nav-num">8</span> QBER & Security abort
+          </button>
+        </li>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top header showing current status -->
+      <header class="module-header">
+        <div class="module-title">
+          <h2 id="header-title">Module 1: Create a Qubit and Measure It</h2>
+          <p id="header-desc">Understand quantum superposition, state collapse, and probabilism.</p>
+        </div>
+        <div class="concept-pill" id="header-concept">Qubit State Vector</div>
+      </header>
+
+      <!-- Viewport housing different modules -->
+      <section class="module-viewport">
+        
+        <!-- ================= MODULE 1 ================= -->
+        <div class="module-card active" id="module-1">
+          <div class="grid-2">
+            <div class="glass-panel">
+              <div class="panel-title">Qubit Circuit Sandbox</div>
+              <p class="description" style="margin-bottom: 20px;">
+                A classical computer uses <strong>bits</strong> (0 or 1). A quantum computer uses <strong>qubits</strong>.
+                Before measurement, a qubit can exist in a state of <strong>superposition</strong> (representing both 0 and 1 at the same time).
+                Click the quantum gates to manipulate the qubit, then press <strong>Measure</strong> to collapse its state.
+              </p>
+              
+              <div class="circuit-container" style="margin-bottom: 20px;">
+                <div class="circuit-canvas-wrapper">
+                  <canvas id="circuit-canvas-1" width="480" height="100" style="width:100%; height:100px;"></canvas>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                <button class="btn btn-secondary" onclick="m1ApplyGate('I')">Apply Identity (I)</button>
+                <button class="btn btn-secondary" onclick="m1ApplyGate('X')">Apply NOT (X)</button>
+                <button class="btn btn-secondary" onclick="m1ApplyGate('H')">Apply Hadamard (H)</button>
+                <button class="btn btn-primary" onclick="m1Measure()">Measure Qubit</button>
+                <button class="btn btn-secondary" style="border-color: var(--color-red); color: var(--color-red);" onclick="m1Reset()">Reset</button>
+              </div>
+            </div>
+
+            <div class="glass-panel">
+              <div class="panel-title">State Visualization</div>
+              <div class="visualizer-container">
+                <canvas id="bloch-canvas-1" class="bloch-canvas" width="240" height="240"></canvas>
+                <div class="vector-reading" id="bloch-reading-1">State: |0⟩</div>
+                
+                <div class="histogram-container">
+                  <div class="panel-title" style="font-size: 0.9rem; margin-top: 10px; margin-bottom: 8px;">Measurement Probabilities</div>
+                  <div class="histo-row">
+                    <span class="histo-label">|0⟩</span>
+                    <div class="histo-bar-bg"><div class="histo-bar-fill" id="prob-0-fill" style="width: 100%;"></div></div>
+                    <span class="histo-val" id="prob-0-val">100%</span>
+                  </div>
+                  <div class="histo-row">
+                    <span class="histo-label">|1⟩</span>
+                    <div class="histo-bar-bg"><div class="histo-bar-fill bar-magenta" id="prob-1-fill" style="width: 0%;"></div></div>
+                    <span class="histo-val" id="prob-1-val">0%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= MODULE 2 ================= -->
+        <div class="module-card" id="module-2">
+          <div class="grid-2">
+            <div class="glass-panel">
+              <div class="panel-title">Laser Encoding Station (Alice)</div>
+              <p class="description" style="margin-bottom: 20px;">
+                To send a quantum message, Alice uses single photons. In the <strong>Rectilinear basis (+)</strong>, 
+                she polarizes the light wave. A <strong>horizontal oscillation (0 degrees)</strong> represents the bit 0, 
+                and a <strong>vertical oscillation (90 degrees)</strong> represents the bit 1.
+              </p>
+
+              <div class="highlight-box" style="margin-bottom: 20px;">
+                Alice prepares a photon state. Choose a bit value below to see how Alice polarizes the light wave.
+              </div>
+
+              <div class="basis-cards" style="margin-bottom: 20px;">
+                <div class="basis-card active-cyan" id="m2-bit-0" onclick="m2SelectBit(0)">
+                  <div class="basis-icon">↔</div>
+                  <div class="basis-label">Bit 0 (Horizontal / 0°)</div>
+                </div>
+                <div class="basis-card" id="m2-bit-1" onclick="m2SelectBit(1)">
+                  <div class="basis-icon">↕</div>
+                  <div class="basis-label">Bit 1 (Vertical / 90°)</div>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                <button class="btn btn-primary" onclick="m2FireLaser()">Fire Single Photon</button>
+              </div>
+            </div>
+
+            <div class="glass-panel">
+              <div class="panel-title">Photon Wave Animation</div>
+              <div class="simulation-stage">
+                <canvas id="photon-canvas-2" class="photon-canvas"></canvas>
+              </div>
+              <div class="vector-reading" id="m2-status" style="text-align: center; margin-top: 15px;">Photon state: Horizontal (Bit 0)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= MODULE 3 ================= -->
+        <div class="module-card" id="module-3">
+          <div class="grid-2">
+            <div class="glass-panel">
+              <div class="panel-title">Choosing Polarization Bases</div>
+              <p class="description" style="margin-bottom: 20px;">
+                To prevent eavesdroppers, Alice encodes her bits using two different bases at random:
+                <br>
+                1. <strong>Rectilinear (+)</strong> basis: Bit 0 is Horizontal (0 degrees), Bit 1 is Vertical (90 degrees).
+                <br>
+                2. <strong>Diagonal (×)</strong> basis: Bit 0 is 45 degrees, Bit 1 is 135 degrees.
+              </p>
+
+              <div class="highlight-box" style="margin-bottom: 20px;">
+                Select a bit and select a polarization basis. Notice how the wave polarization changes.
+              </div>
+
+              <div class="basis-cards" style="margin-bottom: 20px; grid-template-columns: 1fr 1fr;">
+                <div>
+                  <label class="basis-label" style="display:block; margin-bottom: 6px;">Select Bit Value</label>
+                  <div class="basis-cards" style="grid-template-columns: 1fr 1fr; margin-top: 0;">
+                    <div class="basis-card active-cyan" id="m3-bit-0" onclick="m3SelectBit(0)">
+                      <div class="basis-icon" style="font-size: 1.5rem;">0</div>
+                      <div class="basis-label">Bit value</div>
+                    </div>
+                    <div class="basis-card" id="m3-bit-1" onclick="m3SelectBit(1)">
+                      <div class="basis-icon" style="font-size: 1.5rem;">1</div>
+                      <div class="basis-label">Bit value</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="basis-label" style="display:block; margin-bottom: 6px;">Select Encoding Basis</label>
+                  <div class="basis-cards" style="grid-template-columns: 1fr 1fr; margin-top: 0;">
+                    <div class="basis-card active-cyan" id="m3-basis-rect" onclick="m3SelectBasis('+')">
+                      <div class="basis-icon" style="font-size: 1.5rem;">+</div>
+                      <div class="basis-label">Rectilinear</div>
+                    </div>
+                    <div class="basis-card" id="m3-basis-diag" onclick="m3SelectBasis('x')">
+                      <div class="basis-icon" style="font-size: 1.5rem;">×</div>
+                      <div class="basis-label">Diagonal</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                <button class="btn btn-primary" onclick="m3FireLaser()">Transmit Photon</button>
+              </div>
+            </div>
+
+            <div class="glass-panel">
+              <div class="panel-title">Polarization Filter Animation</div>
+              <div class="simulation-stage">
+                <canvas id="photon-canvas-3" class="photon-canvas"></canvas>
+              </div>
+              <div class="vector-reading" id="m3-status" style="text-align: center; margin-top: 15px;">Alice encodes Bit 0 in + basis (0° horizontal)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= MODULE 4 ================= -->
+        <div class="module-card" id="module-4">
+          <div class="grid-2">
+            <div class="glass-panel">
+              <div class="panel-title">Bob's Receiver Station</div>
+              <p class="description" style="margin-bottom: 16px;">
+                Alice sends the polarized photon through a fiber optic cable. Bob receives it but <strong>does not know which basis Alice used</strong>.
+                Bob must choose a basis (+ or ×) at random to measure it.
+              </p>
+              
+              <div class="highlight-box" style="margin-bottom: 16px; font-size: 0.85rem;">
+                - If Bob chooses the <strong>same basis</strong> as Alice, he measures the correct bit with <strong>100% certainty</strong>.
+                <br>
+                - If he chooses a <strong>different basis</strong>, he collapses the photon state and gets a <strong>random bit (0 or 1 with 50% probability)</strong>.
+              </div>
+
+              <div style="background: rgba(0, 0, 0, 0.15); border: 1px solid var(--border-glass); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px;">
+                  <span>Alice's Bit: <strong id="m4-alice-bit-val" style="color: var(--color-cyan);">0</strong></span>
+                  <span>Alice's Basis: <strong id="m4-alice-basis-val" style="color: var(--color-cyan);">+</strong></span>
+                  <span>Polarization: <strong id="m4-alice-pol-val" style="color: var(--color-cyan);">0° (Horizontal)</strong></span>
+                </div>
+              </div>
+
+              <label class="basis-label" style="display:block; margin-bottom: 6px;">Select Bob's Measurement Basis</label>
+              <div class="basis-cards" style="margin-bottom: 20px; grid-template-columns: 1fr 1fr;">
+                <div class="basis-card active-cyan" id="m4-basis-rect" onclick="m4SelectBobBasis('+')">
+                  <div class="basis-icon">+</div>
+                  <div class="basis-label">Measure Rectilinear</div>
+                </div>
+                <div class="basis-card" id="m4-basis-diag" onclick="m4SelectBobBasis('x')">
+                  <div class="basis-icon">×</div>
+                  <div class="basis-label">Measure Diagonal</div>
+                </div>
+              </div>
+
+              <div class="actions-row">
+                <button class="btn btn-primary" id="m4-measure-btn" onclick="m4MeasurePhoton()">Perform Measurement</button>
+                <button class="btn btn-secondary" onclick="m4RandomizeAlice()">Send New Random Photon</button>
+              </div>
+            </div>
+
+            <div class="glass-panel">
+              <div class="panel-title">Measurement Slit Projection</div>
+              <div class="simulation-stage">
+                <canvas id="photon-canvas-4" class="photon-canvas"></canvas>
+              </div>
+              <div class="vector-reading" id="m4-status" style="text-align: center; margin-top: 15px; min-height: 40px;">Select a basis and click Measure!</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= MODULE 5 ================= -->
+        <div class="module-card" id="module-5">
+          <div class="glass-panel">
+            <div class="panel-title">Basis Sifting (Public Discussion)</div>
+            <p class="description" style="margin-bottom: 16px;">
+              After transmitting a sequence of photons, Alice and Bob announce the <strong>bases</strong> they used for each photon over a public channel.
+              They <strong>do not</strong> announce the actual bits.
+              They keep the bits where their bases matched, and discard the rest. This process is called <strong>Sifting</strong>.
+            </p>
+
+            <div class="highlight-box" style="margin-bottom: 20px;">
+              Click on each column in the table below to compare bases. Keep columns where the bases are identical, and discard the columns where they differ.
+            </div>
+
+            <div class="sifting-container">
+              <table class="sifting-table" id="sifting-table-5">
+                <thead>
+                  <tr id="s5-row-idx">
+                    <th>Photon Index</th>
+                    <!-- dynamically populated -->
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr id="s5-row-alice-basis">
+                    <td class="stream-label">Alice's Basis</td>
+                  </tr>
+                  <tr id="s5-row-bob-basis">
+                    <td class="stream-label">Bob's Basis</td>
+                  </tr>
+                  <tr id="s5-row-action">
+                    <td class="stream-label">Action</td>
+                  </tr>
+                  <tr id="s5-row-sifted">
+                    <td class="stream-label">Sifted Key Bit</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="actions-row" style="margin-top: 24px;">
+              <button class="btn btn-primary" onclick="m5AutoSift()">Auto Sift All</button>
+              <button class="btn btn-secondary" onclick="m5RegenerateData()">Regenerate 10 Photons</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= MODULE 6 ================= -->
+        <div class="module-card" id="module-6">
+          <div class="grid-2">
+            <div class="glass-panel">
+              <div class="panel-title">Generating the Shared Secret Key</div>
+              <p class="description" style="margin-bottom: 16px;">
+                Now we run the sifting protocol on a larger batch of photons. 
+                We will transmit 20 photons from Alice to Bob, compare their random bases, and generate the final key from the matching bases.
+              </p>
+
+              <div class="actions-row" style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="m6StartSimulation()">Run 20-Photon Protocol</button>
+              </div>
+
+              <div class="key-stream-container" id="m6-key-streams" style="display: none;">
+                <div class="stream-row">
+                  <div class="stream-label">Alice's Bits</div>
+                  <div class="stream-bits" id="m6-alice-bits"></div>
+                </div>
+                <div class="stream-row">
+                  <div class="stream-label">Alice's Bases</div>
+                  <div class="stream-bits" id="m6-alice-bases"></div>
+                </div>
+                <div class="stream-row">
+                  <div class="stream-label">Bob's Bases</div>
+                  <div class="stream-bits" id="m6-bob-bases"></div>
+                </div>
+                <div class="stream-row">
+                  <div class="stream-label">Bob's Bits</div>
+                  <div class="stream-bits" id="m6-bob-bits"></div>
+                </div>
+                <div class="stream-row" style="background: rgba(0, 255, 102, 0.02); border-color: rgba(0, 255, 102, 0.15);">
+                  <div class="stream-label" style="color: var(--color-green);">Shared Key</div>
+                  <div class="stream-bits" id="m6-shared-key"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-panel" id="m6-stats-panel" style="display: none;">
+              <div class="panel-title">Protocol Results</div>
+              <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px;">
+                  <span style="color: var(--text-secondary);">Photons Sent</span>
+                  <strong style="color: var(--color-cyan);">20</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px;">
+                  <span style="color: var(--text-secondary);">Bases Matched</span>
+                  <strong id="m6-stat-matched" style="color: var(--color-cyan);">0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-glass); padding-bottom: 8px;">
+                  <span style="color: var(--text-secondary);">Sifted Key Length</span>
+                  <strong id="m6-stat-key-len" style="color: var(--color-green);">0 bits</strong>
+                </div>
+                
+                <div class="highlight-box">
+                  Notice that the sifted key is roughly <strong>half (50%)</strong> the length of the original sent bits, 
+                  because Bob chooses the same basis as Alice with 50% probability.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= MODULE 7 ================= -->
+        <div class="module-card" id="module-7">
+          <div class="grid-2">
+            <div class="glass-panel">
+              <div class="panel-title">Eve Intercepts the Channel</div>
+              <p class="description" style="margin-bottom: 16px;">
+                What happens if an eavesdropper, <strong>Eve</strong>, tries to intercept the photons?
+                According to quantum physics (the <strong>No-Cloning Theorem</strong>), Eve cannot copy a photon. She must measure it.
+              </p>
+              
+              <div class="highlight-box eve-warning" style="margin-bottom: 16px;">
+                Eve measures each photon in a random basis (+ or ×). If she measures, she collapses the qubit's wave.
+                She then sends the collapsed photon onward to Bob. This introduces <strong>disturbance and errors</strong> in Bob's measurements!
+              </div>
+
+              <div class="toggle-container" style="margin-bottom: 20px;">
+                <span class="basis-label" style="font-size: 0.9rem; color: var(--text-primary);">Activate Eve (Eavesdropper)</span>
+                <label class="switch">
+                  <input type="checkbox" id="m7-eve-toggle" onchange="m7ToggleEve()">
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="actions-row">
+                <button class="btn btn-primary" onclick="m7FireLaser()">Transmit Single Photon</button>
+              </div>
+            </div>
+
+            <div class="glass-panel">
+              <div class="panel-title">Channel Transmission with Eavesdropping</div>
+              <div class="simulation-stage" style="height: 240px;">
+                <canvas id="photon-canvas-7" class="photon-canvas"></canvas>
+              </div>
+              <div class="vector-reading" id="m7-status" style="text-align: center; margin-top: 15px; font-size: 0.82rem; min-height: 40px;">
+                Toggle Eve and fire a photon to watch her intercept.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= MODULE 8 ================= -->
+        <div class="module-card" id="module-8">
+          <div class="grid-2">
+            <div class="glass-panel">
+              <div class="panel-title">QBER (Quantum Bit Error Rate) Analysis</div>
+              <p class="description" style="margin-bottom: 16px;">
+                To detect Eve, Alice and Bob publicly share and compare a <strong>random sample</strong> of their sifted key bits (e.g., 6 bits).
+                They calculate the <strong>QBER (Quantum Bit Error Rate)</strong>:
+                <div style="font-family: monospace; font-size: 1.05rem; text-align: center; margin: 12px 0; color: var(--color-cyan);">
+                  QBER = (Incorrect Bits) / (Compared Bits)
+                </div>
+              </p>
+
+              <div class="highlight-box eve-warning" style="margin-bottom: 20px;" id="m8-theory-box">
+                - <strong>No Eve</strong>: QBER should be <strong>0%</strong> (in an ideal noiseless channel).
+                <br>
+                - <strong>Eve Present</strong>: QBER rises to a theoretical average of <strong>25%</strong>, because Eve guesses the wrong basis 50% of the time, causing Bob's measurements to fail 50% of the time.
+              </div>
+
+              <div class="actions-row" style="margin-bottom: 24px;">
+                <button class="btn btn-primary" onclick="m8RunProtocol(false)">Simulate Without Eve</button>
+                <button class="btn btn-danger" onclick="m8RunProtocol(true)">Simulate With Eve</button>
+              </div>
+
+              <div class="key-stream-container" id="m8-key-streams" style="display: none;">
+                <div class="stream-row">
+                  <div class="stream-label">Alice's Key</div>
+                  <div class="stream-bits" id="m8-alice-bits"></div>
+                </div>
+                <div class="stream-row">
+                  <div class="stream-label">Bob's Key</div>
+                  <div class="stream-bits" id="m8-bob-bits"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-panel" id="m8-stats-panel" style="display: none;">
+              <div class="panel-title">QBER Gauge</div>
+              
+              <div class="gauge-wrapper">
+                <svg class="gauge-svg" viewBox="0 0 100 60">
+                  <path class="gauge-track" d="M 15 50 A 38 38 0 0 1 85 50" />
+                  <path class="gauge-fill" id="m8-gauge-fill" d="M 15 50 A 38 38 0 0 1 85 50" />
+                </svg>
+                <div class="gauge-val" id="m8-gauge-val">0%</div>
+                <div class="gauge-label">QBER Detected</div>
+              </div>
+
+              <div class="status-banner secure" id="m8-status-banner">
+                <span class="status-banner-icon" id="m8-banner-icon">🛡️</span>
+                <div class="status-banner-text">
+                  <h4 id="m8-banner-title">Channel Secure</h4>
+                  <p id="m8-banner-desc">QBER is below threshold (11%). No eavesdropper detected.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Navigation footer -->
+      <footer class="nav-footer">
+        <button class="btn btn-secondary" id="btn-prev" onclick="navigateModule(-1)" disabled>Previous Module</button>
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;" id="progress-indicator">Module 1 of 8</div>
+        <button class="btn btn-primary" id="btn-next" onclick="navigateModule(1)">Next Module</button>
+      </footer>
+
+    </main>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

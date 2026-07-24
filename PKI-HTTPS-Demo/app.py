@@ -1,4 +1,5 @@
 import os
+import oqs
 from flask import Flask, request, jsonify, send_from_directory
 
 # Get the directory containing app.py
@@ -100,6 +101,114 @@ def tls_details():
     resp.headers.add("Access-Control-Allow-Origin", "*")
     resp.headers.add("Access-Control-Allow-Headers", "*")
     resp.headers.add("Access-Control-Allow-Methods", "GET, OPTIONS")
+    return resp
+
+@app.route("/api/mlkem/keygen", methods=["GET", "OPTIONS"])
+def mlkem_keygen():
+    if request.method == "OPTIONS":
+        resp = jsonify({"status": "OK"})
+        resp.headers.add("Access-Control-Allow-Origin", "*")
+        resp.headers.add("Access-Control-Allow-Headers", "*")
+        resp.headers.add("Access-Control-Allow-Methods", "GET, OPTIONS")
+        return resp
+        
+    alg = request.args.get("alg", "ML-KEM-768")
+    try:
+        with oqs.KeyEncapsulation(alg) as kem:
+            public_key = kem.generate_keypair()
+            private_key = kem.export_secret_key()
+            
+            response_data = {
+                "status": "Success",
+                "public_key": public_key.hex(),
+                "private_key": private_key.hex()
+            }
+    except Exception as e:
+        response_data = {
+            "status": "Error",
+            "message": str(e)
+        }
+        
+    resp = jsonify(response_data)
+    resp.headers.add("Access-Control-Allow-Origin", "*")
+    resp.headers.add("Access-Control-Allow-Headers", "*")
+    resp.headers.add("Access-Control-Allow-Methods", "GET, OPTIONS")
+    return resp
+
+@app.route("/api/mlkem/encap", methods=["POST", "OPTIONS"])
+def mlkem_encap():
+    if request.method == "OPTIONS":
+        resp = jsonify({"status": "OK"})
+        resp.headers.add("Access-Control-Allow-Origin", "*")
+        resp.headers.add("Access-Control-Allow-Headers", "*")
+        resp.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return resp
+        
+    try:
+        data = request.get_json() or {}
+        alg = data.get("alg", "ML-KEM-768")
+        pub_key_hex = data.get("public_key", "")
+        if not pub_key_hex:
+            raise ValueError("Missing public_key")
+            
+        pub_key_bytes = bytes.fromhex(pub_key_hex)
+        with oqs.KeyEncapsulation(alg) as kem:
+            ciphertext, shared_secret = kem.encap_secret(pub_key_bytes)
+            
+            response_data = {
+                "status": "Success",
+                "ciphertext": ciphertext.hex(),
+                "shared_secret": shared_secret.hex()
+            }
+    except Exception as e:
+        response_data = {
+            "status": "Error",
+            "message": str(e)
+        }
+        
+    resp = jsonify(response_data)
+    resp.headers.add("Access-Control-Allow-Origin", "*")
+    resp.headers.add("Access-Control-Allow-Headers", "*")
+    resp.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+    return resp
+
+@app.route("/api/mlkem/decap", methods=["POST", "OPTIONS"])
+def mlkem_decap():
+    if request.method == "OPTIONS":
+        resp = jsonify({"status": "OK"})
+        resp.headers.add("Access-Control-Allow-Origin", "*")
+        resp.headers.add("Access-Control-Allow-Headers", "*")
+        resp.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return resp
+        
+    try:
+        data = request.get_json() or {}
+        alg = data.get("alg", "ML-KEM-768")
+        priv_key_hex = data.get("private_key", "")
+        ciphertext_hex = data.get("ciphertext", "")
+        if not priv_key_hex or not ciphertext_hex:
+            raise ValueError("Missing private_key or ciphertext")
+            
+        priv_key_bytes = bytes.fromhex(priv_key_hex)
+        ciphertext_bytes = bytes.fromhex(ciphertext_hex)
+        
+        with oqs.KeyEncapsulation(alg, priv_key_bytes) as kem:
+            shared_secret = kem.decap_secret(ciphertext_bytes)
+            
+            response_data = {
+                "status": "Success",
+                "shared_secret": shared_secret.hex()
+            }
+    except Exception as e:
+        response_data = {
+            "status": "Error",
+            "message": str(e)
+        }
+        
+    resp = jsonify(response_data)
+    resp.headers.add("Access-Control-Allow-Origin", "*")
+    resp.headers.add("Access-Control-Allow-Headers", "*")
+    resp.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
     return resp
 
 if __name__ == "__main__":
