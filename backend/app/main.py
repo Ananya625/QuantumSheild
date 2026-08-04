@@ -34,6 +34,7 @@ def seed_database():
             alice = Account(
                 account_number="123456789",
                 owner_name="Alice",
+                bank_name="JPMorgan",
                 balance=5000.00
             )
             db.add(alice)
@@ -43,6 +44,7 @@ def seed_database():
             bob = Account(
                 account_number="987654321",
                 owner_name="Bob",
+                bank_name="HDFC",
                 balance=1000.00
             )
             db.add(bob)
@@ -66,7 +68,9 @@ def seed_database():
             past_tx1 = Transaction(
                 session_id="mock-history-session",
                 sender_account="123456789",
+                sender_bank="JPMorgan",
                 receiver_account="987654321",
+                receiver_bank="HDFC",
                 amount=50.00,
                 description="Dinner reimbursement",
                 status="SUCCESS",
@@ -79,7 +83,9 @@ def seed_database():
             past_tx2 = Transaction(
                 session_id="mock-history-session",
                 sender_account="999888777", # Mock employer account
+                sender_bank="Employer Bank",
                 receiver_account="123456789", # Alice
+                receiver_bank="JPMorgan",
                 amount=3000.00,
                 description="Monthly Salary Credit",
                 status="SUCCESS",
@@ -120,7 +126,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 @app.get("/api/accounts")
 def get_accounts(db: Session = Depends(get_db)):
     accounts = db.query(Account).all()
-    return [{"account_number": a.account_number, "owner_name": a.owner_name, "balance": a.balance} for a in accounts]
+    return [{"account_number": a.account_number, "owner_name": a.owner_name, "bank_name": a.bank_name, "balance": a.balance} for a in accounts]
 
 @app.get("/api/transaction/history/{account_number}")
 def get_transaction_history(account_number: str, db: Session = Depends(get_db)):
@@ -177,10 +183,13 @@ def initiate_transfer(payload: TransferRequest, background_tasks: BackgroundTask
     tx = Transaction(
         session_id=payload.session_id,
         sender_account=payload.sender_account,
+        sender_bank=sender.bank_name,
         receiver_account=payload.receiver_account,
+        receiver_bank=receiver.bank_name,
         amount=payload.amount,
         description=payload.description,
-        status="PENDING"
+        status="PENDING",
+        security_mode=payload.security_mode
     )
     db.add(tx)
     db.commit()
@@ -202,10 +211,14 @@ def get_transaction_details(tx_id: int, db: Session = Depends(get_db)):
         "id": tx.id,
         "session_id": tx.session_id,
         "sender_account": tx.sender_account,
+        "sender_bank": tx.sender_bank,
         "receiver_account": tx.receiver_account,
+        "receiver_bank": tx.receiver_bank,
         "amount": tx.amount,
         "description": tx.description,
         "status": tx.status,
+        "elapsed_time": tx.elapsed_time,
+        "security_mode": tx.security_mode,
         "tls": {
             "tls_cert": tx.tls_cert_pem,
             "tls_ca_cert": tx.tls_ca_cert_pem,
@@ -225,6 +238,22 @@ def get_transaction_details(tx_id: int, db: Session = Depends(get_db)):
         "signature": {
             "client_signing_key": tx.client_signing_public_pem,
             "signature_hex": tx.signature_hex,
+        },
+        "bb84": {
+            "alice_bits": tx.bb84_alice_bits,
+            "alice_bases": tx.bb84_alice_bases,
+            "bob_bases": tx.bb84_bob_bases,
+            "qber": tx.bb84_qber,
+            "secret": tx.bb84_reconciled_key_hex,
+        },
+        "mlkem": {
+            "public_key": tx.mlkem_public_key_pem,
+            "ciphertext": tx.mlkem_ciphertext_hex,
+            "secret": tx.mlkem_secret_hex,
+        },
+        "mldsa": {
+            "public_key": tx.mldsa_public_key_pem,
+            "signature": tx.mldsa_signature_hex,
         },
         "created_at": tx.created_at.isoformat()
     }

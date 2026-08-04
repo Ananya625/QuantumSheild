@@ -36,6 +36,7 @@ export const PacketInspector: React.FC = () => {
   const packet = crypto.packetData;
 
   const showWaiting = !packet || ['PENDING', 'AUTHENTICATING', 'TLS_HANDSHAKE', 'TLS_ESTABLISHED', 'KEY_EXCHANGE', 'DERIVING_KEY', 'ENCRYPTING', 'SIGNING'].includes(pipelineStatus);
+  const isQuantum = crypto.securityMode === 'quantumshield';
 
   return (
     <div className="flex flex-col h-full p-6 bg-white min-h-0 select-none">
@@ -69,7 +70,9 @@ export const PacketInspector: React.FC = () => {
             </div>
             <div>
               <span className="text-slate-400 font-semibold mr-1">PROTOCOL:</span>
-              <span className="text-blue-700 font-bold bg-blue-50 border border-blue-100 px-2 py-0.5 rounded text-[10px]">{packet.network_frame.protocol}</span>
+              <span className="text-blue-700 font-bold bg-blue-50 border border-blue-100 px-2 py-0.5 rounded text-[10px]">
+                {isQuantum ? "TCP / PQC / HTTPS" : packet.network_frame.protocol}
+              </span>
             </div>
             <div>
               <span className="text-slate-400 font-semibold mr-1">LENGTH:</span>
@@ -90,8 +93,8 @@ export const PacketInspector: React.FC = () => {
               <div className="flex"><span className="w-28 text-slate-400 font-semibold">Content-Type:</span> <span className="text-slate-700">{packet.http_header.content_type}</span></div>
               <div className="flex items-start">
                 <span className="w-28 text-slate-400 font-semibold shrink-0">Authorization:</span> 
-                <span className="text-emerald-700 font-semibold truncate max-w-[280px]" title="ECDSA Verification Token">
-                  ECDSA-Signature {packet.tls_payload.signature?.substring(0, 16)}...
+                <span className="text-emerald-700 font-semibold truncate max-w-[280px]" title={isQuantum ? "ML-DSA Verification Token" : "ECDSA Verification Token"}>
+                  {isQuantum ? 'ML-DSA-Signature' : 'ECDSA-Signature'} {packet.tls_payload.signature?.substring(0, 16)}...
                 </span>
               </div>
             </div>
@@ -104,7 +107,9 @@ export const PacketInspector: React.FC = () => {
                 <Terminal className="h-3.5 w-3.5" />
                 <span>Hex Encrypted Payload Dump</span>
               </div>
-              <span className="text-[9px] text-slate-400 font-semibold uppercase">AES-256-GCM Ciphertext</span>
+              <span className="text-[9px] text-slate-400 font-semibold uppercase">
+                {isQuantum ? "AES-256 (Kyber-Keyed) Ciphertext" : "AES-256-GCM Ciphertext"}
+              </span>
             </div>
             
             <pre className="flex-1 p-4 bg-slate-900 text-slate-100 font-mono text-[10px] leading-4 overflow-y-auto whitespace-pre select-all select-text custom-scrollbar">

@@ -25,7 +25,7 @@ export const TransactionPipeline: React.FC = () => {
     },
     {
       name: 'BankA',
-      label: 'Bank A (TLS)',
+      label: 'JPMorgan (TLS)',
       icon: <ShieldCheck className="h-4 w-4" />,
       statuses: ['TLS_HANDSHAKE', 'TLS_ESTABLISHED']
     },
@@ -37,7 +37,7 @@ export const TransactionPipeline: React.FC = () => {
     },
     {
       name: 'BankB',
-      label: 'Bank B (Gateway)',
+      label: 'HDFC (Gateway)',
       icon: <Server className="h-4 w-4" />,
       statuses: ['VERIFYING_SIGNATURE', 'DECRYPTING']
     },

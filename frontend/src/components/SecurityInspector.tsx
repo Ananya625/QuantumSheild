@@ -120,7 +120,10 @@ export const SecurityInspector: React.FC = () => {
           return { state: 'pending', label: 'Pending' };
         }
         if (pipelineStatus === 'KEY_EXCHANGE') return { state: 'active', label: 'Exchanging' };
-        return { state: 'completed', label: 'ECDHE Complete' };
+        return { 
+          state: 'completed', 
+          label: crypto.securityMode === 'quantumshield' ? 'PQC Hybrid Complete' : 'ECDHE Complete' 
+        };
 
       case 'sessionKey':
         if (['PENDING', 'AUTHENTICATING', 'TLS_HANDSHAKE', 'TLS_ESTABLISHED', 'KEY_EXCHANGE'].includes(pipelineStatus)) {
@@ -138,13 +141,20 @@ export const SecurityInspector: React.FC = () => {
 
       case 'signature':
         if (['SIGNING'].includes(pipelineStatus)) return { state: 'active', label: 'Signing' };
-        if (crypto.signature) return { state: 'completed', label: 'ECDSA Signed' };
+        if (crypto.signature || crypto.mldsaSignature) {
+          return { 
+            state: 'completed', 
+            label: crypto.securityMode === 'quantumshield' ? 'ML-DSA Signed' : 'ECDSA Signed' 
+          };
+        }
         return { state: 'pending', label: 'Pending' };
 
       default:
         return { state: 'pending', label: 'Pending' };
     }
   };
+
+  const isQuantum = crypto.securityMode === 'quantumshield';
 
   return (
     <div className="px-6 py-4 space-y-2">
@@ -210,43 +220,111 @@ export const SecurityInspector: React.FC = () => {
         </div>
       </AccordionItem>
 
-      {/* 3. KEY EXCHANGE (ECDHE) */}
+      {/* 3. KEY EXCHANGE (ECDHE OR BB84 + ML-KEM) */}
       <AccordionItem
-        title="Key Exchange"
+        title={isQuantum ? "Quantum Key Exchange" : "Key Exchange"}
         isOpen={activeSection === 'keyExchange'}
         onToggle={() => handleToggle('keyExchange')}
         status={getStatus('keyExchange').state}
         statusLabel={getStatus('keyExchange').label}
         icon={<Key className="h-4.5 w-4.5" />}
       >
-        <div className="space-y-3">
-          <div className="flex justify-between border-b border-slate-50 py-1">
-            <span className="text-slate-400">Asymmetric Curve</span>
-            <span className="font-bold text-slate-800 font-mono">ECDHE (SECP256R1)</span>
-          </div>
-          {crypto.clientDhPublicKey && (
-            <div className="space-y-2 pt-1">
-              <div>
-                <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Client Public DH Key</span>
-                <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg max-h-20 overflow-y-auto select-all text-slate-500 leading-3 whitespace-pre-wrap">
-                  {crypto.clientDhPublicKey}
-                </pre>
-              </div>
-              <div>
-                <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Server Public DH Key</span>
-                <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg max-h-20 overflow-y-auto select-all text-slate-500 leading-3 whitespace-pre-wrap">
-                  {crypto.serverDhPublicKey}
-                </pre>
-              </div>
-              <div>
-                <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Diffie-Hellman Shared Secret</span>
-                <pre className="font-mono text-[9.5px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg select-all text-blue-700 font-bold break-all">
-                  {crypto.sharedSecret}
-                </pre>
+        {isQuantum ? (
+          // QuantumShield post-quantum visual telemetry
+          <div className="space-y-4">
+            <div className="border-b border-slate-100 pb-2">
+              <span className="block text-[10px] text-purple-600 font-bold uppercase tracking-wider mb-2">1. BB84 Quantum Channel Sim</span>
+              <div className="space-y-2.5 bg-slate-50 border border-slate-100 p-3 rounded-xl font-mono text-[10px]">
+                <div>
+                  <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Alice's Raw Qubits (256-bit)</span>
+                  <div className="text-slate-800 break-all leading-tight tracking-wider bg-white border border-slate-100 p-1.5 rounded max-h-12 overflow-y-auto">
+                    {crypto.bb84AliceBits}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Alice's Bases</span>
+                    <div className="text-slate-700 break-all tracking-wider bg-white border border-slate-100 p-1.5 rounded max-h-12 overflow-y-auto">
+                      {crypto.bb84AliceBases}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Bob's Bases</span>
+                    <div className="text-slate-700 break-all tracking-wider bg-white border border-slate-100 p-1.5 rounded max-h-12 overflow-y-auto">
+                      {crypto.bb84BobBases}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-slate-200/50">
+                  <span className="text-[8px] font-bold text-slate-400 uppercase">Quantum Bit Error Rate (QBER)</span>
+                  <span className="font-extrabold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
+                    {crypto.bb84Qber?.toFixed(2)}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Reconciled BB84 Shared Secret</span>
+                  <div className="text-purple-700 break-all font-extrabold select-all bg-white border border-slate-100 p-1.5 rounded mt-0.5">
+                    {crypto.bb84Secret}
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+
+            <div>
+              <span className="block text-[10px] text-indigo-600 font-bold uppercase tracking-wider mb-2">2. ML-KEM-768 (Kyber) Encap</span>
+              <div className="space-y-2">
+                <div>
+                  <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Client Kyber Public Key</span>
+                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2 rounded-lg max-h-16 overflow-y-auto select-all text-slate-500 break-all leading-normal">
+                    {crypto.mlkemPublicKey}
+                  </pre>
+                </div>
+                <div>
+                  <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Encapsulated Ciphertext (1088 bytes)</span>
+                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2 rounded-lg max-h-16 overflow-y-auto select-all text-slate-500 break-all leading-normal">
+                    {crypto.mlkemCiphertext}
+                  </pre>
+                </div>
+                <div>
+                  <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">ML-KEM Shared Secret</span>
+                  <pre className="font-mono text-[9.5px] bg-indigo-50 border border-indigo-100 p-2 rounded-lg select-all text-indigo-700 font-bold break-all">
+                    {crypto.mlkemSecret}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Classical ECDHE exchange
+          <div className="space-y-3">
+            <div className="flex justify-between border-b border-slate-50 py-1">
+              <span className="text-slate-400">Asymmetric Curve</span>
+              <span className="font-bold text-slate-800 font-mono">ECDHE (SECP256R1)</span>
+            </div>
+            {crypto.clientDhPublicKey && (
+              <div className="space-y-2 pt-1">
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Client Public DH Key</span>
+                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg max-h-20 overflow-y-auto select-all text-slate-500 leading-3 whitespace-pre-wrap">
+                    {crypto.clientDhPublicKey}
+                  </pre>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Server Public DH Key</span>
+                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg max-h-20 overflow-y-auto select-all text-slate-500 leading-3 whitespace-pre-wrap">
+                    {crypto.serverDhPublicKey}
+                  </pre>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Diffie-Hellman Shared Secret</span>
+                  <pre className="font-mono text-[9.5px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg select-all text-blue-700 font-bold break-all">
+                    {crypto.sharedSecret}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </AccordionItem>
 
       {/* 4. SESSION KEY DERIVATION (HKDF) */}
@@ -261,16 +339,26 @@ export const SecurityInspector: React.FC = () => {
         <div className="space-y-3">
           <div className="flex justify-between border-b border-slate-50 py-1">
             <span className="text-slate-400">Derivation KDF</span>
-            <span className="font-bold text-slate-800 font-mono">HKDF-SHA256</span>
+            <span className="font-bold text-slate-800 font-mono">
+              {isQuantum ? "HKDF-SHA256 (Quantum Hybrid)" : "HKDF-SHA256"}
+            </span>
           </div>
           <div className="flex justify-between border-b border-slate-50 py-1">
-            <span className="text-slate-400">HKDF Salt Used</span>
-            <span className="font-mono text-slate-600">quantumshield-tls-salt-2026</span>
+            <span className="text-slate-400">Symmetric Entropy Input</span>
+            <span className="font-mono text-[9px] text-slate-600 truncate max-w-[200px]" title={isQuantum ? "BB84 Key + ML-KEM Key" : "ECDHE Shared Secret"}>
+              {isQuantum ? "BB84 secret + ML-KEM secret" : "ECDHE shared secret"}
+            </span>
+          </div>
+          <div className="flex justify-between border-b border-slate-50 py-1">
+            <span className="text-slate-400">HKDF Info Info</span>
+            <span className="font-mono text-[9px] text-slate-700 font-semibold">
+              {isQuantum ? "quantumshield-hybrid" : "quantumshield-aes-gcm-key-encryption"}
+            </span>
           </div>
           {crypto.sessionKey && (
             <div>
-              <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Derived Symmetric Session Key</span>
-              <pre className="font-mono text-[9.5px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg select-all text-emerald-700 font-bold break-all">
+              <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Derived Symmetric Session Key (AES-256)</span>
+              <pre className={`font-mono text-[9.5px] border p-2.5 rounded-lg select-all font-bold break-all ${isQuantum ? 'bg-purple-50 border-purple-100 text-purple-700' : 'bg-slate-50 border-slate-100 text-emerald-700'}`}>
                 {crypto.sessionKey}
               </pre>
             </div>
@@ -317,45 +405,73 @@ export const SecurityInspector: React.FC = () => {
         </div>
       </AccordionItem>
 
-      {/* 6. DIGITAL SIGNATURE (ECDSA) */}
+      {/* 6. DIGITAL SIGNATURE (ECDSA OR ML-DSA) */}
       <AccordionItem
-        title="Digital Signature"
+        title={isQuantum ? "Post-Quantum Signature" : "Digital Signature"}
         isOpen={activeSection === 'signature'}
         onToggle={() => handleToggle('signature')}
         status={getStatus('signature').state}
         statusLabel={getStatus('signature').label}
         icon={<ShieldCheck className="h-4.5 w-4.5" />}
       >
-        <div className="space-y-3">
-          <div className="flex justify-between border-b border-slate-50 py-1">
-            <span className="text-slate-400">Signature Standard</span>
-            <span className="font-bold text-slate-800 font-mono">ECDSA (SECP256R1)</span>
-          </div>
-          {crypto.signature && (
-            <div className="space-y-2">
-              <div>
-                <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Client Public signing Key</span>
-                <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg max-h-20 overflow-y-auto select-all text-slate-500 leading-3 whitespace-pre-wrap">
-                  {crypto.clientSigningPublicKey}
-                </pre>
-              </div>
-              <div>
-                <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">ECDSA Signature (R component)</span>
-                <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2 py-1 rounded select-all text-slate-600 break-all">
-                  {crypto.signatureR}
-                </pre>
-              </div>
-              <div>
-                <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">ECDSA Signature (S component)</span>
-                <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2 py-1 rounded select-all text-slate-600 break-all">
-                  {crypto.signatureS}
-                </pre>
-              </div>
+        {isQuantum ? (
+          // QuantumShield ML-DSA signatures
+          <div className="space-y-3">
+            <div className="flex justify-between border-b border-slate-50 py-1">
+              <span className="text-slate-400">Signature Standard</span>
+              <span className="font-bold text-slate-800 font-mono">ML-DSA-65 (Dilithium-65)</span>
             </div>
-          )}
-        </div>
+            {crypto.mldsaSignature && (
+              <div className="space-y-2">
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Client Public Dilithium Key</span>
+                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg max-h-20 overflow-y-auto select-all text-slate-500 leading-3 whitespace-pre-wrap">
+                    {crypto.mldsaPublicKey}
+                  </pre>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">ML-DSA-65 Signature Block</span>
+                  <pre className="font-mono text-[9px] bg-purple-50 border border-purple-100 p-2.5 rounded-lg max-h-24 overflow-y-auto select-all text-purple-800 break-all leading-normal">
+                    {crypto.mldsaSignature}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          // Classical ECDSA signatures
+          <div className="space-y-3">
+            <div className="flex justify-between border-b border-slate-50 py-1">
+              <span className="text-slate-400">Signature Standard</span>
+              <span className="font-bold text-slate-800 font-mono">ECDSA (SECP256R1)</span>
+            </div>
+            {crypto.signature && (
+              <div className="space-y-2">
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Client Public Signing Key</span>
+                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2.5 rounded-lg max-h-20 overflow-y-auto select-all text-slate-500 leading-3 whitespace-pre-wrap">
+                    {crypto.clientSigningPublicKey}
+                  </pre>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">ECDSA Signature (R component)</span>
+                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2 py-1 rounded select-all text-slate-600 break-all">
+                    {crypto.signatureR}
+                  </pre>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">ECDSA Signature (S component)</span>
+                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2 py-1 rounded select-all text-slate-600 break-all">
+                    {crypto.signatureS}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </AccordionItem>
     </div>
   );
 };
+
 export default SecurityInspector;

@@ -15,6 +15,7 @@ export interface TransferPayload {
   receiver_account: string;
   amount: number;
   description: string;
+  security_mode: 'classical' | 'quantumshield';
 }
 
 export const api = {

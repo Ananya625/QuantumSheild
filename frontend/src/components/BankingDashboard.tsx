@@ -2,127 +2,152 @@ import React, { useEffect } from 'react';
 import { useTransaction } from '../context/TransactionContext';
 import { LogOut, ArrowRightLeft, CreditCard, Clock, TrendingDown, TrendingUp } from 'lucide-react';
 
-export const BankingDashboard: React.FC = () => {
-  const { username, accountNumber, balance, history, setScreen, logout, fetchAccountData } = useTransaction();
+interface BankingDashboardProps {
+  party: 'A' | 'B';
+}
+
+export const BankingDashboard: React.FC<BankingDashboardProps> = ({ party }) => {
+  const { 
+    usernameA, accountNumberA, balanceA, historyA, setScreenA, logoutA, fetchAccountDataA,
+    usernameB, accountNumberB, balanceB, historyB, logoutB, fetchAccountDataB
+  } = useTransaction();
+
+  // Bind values based on party
+  const isA = party === 'A';
+  const username = isA ? usernameA : usernameB;
+  const accountNumber = isA ? accountNumberA : accountNumberB;
+  const balance = isA ? balanceA : balanceB;
+  const history = isA ? historyA : historyB;
+  const logout = isA ? logoutA : logoutB;
+  const fetchAccountData = isA ? fetchAccountDataA : fetchAccountDataB;
+  const setScreen = isA ? setScreenA : undefined;
 
   useEffect(() => {
     fetchAccountData();
   }, [fetchAccountData]);
 
   return (
-    <div className="bg-slate-50 min-h-screen flex flex-col font-sans select-none">
+    <div className="bg-slate-50 min-h-screen flex flex-col font-sans select-none w-full">
       {/* Banking Navbar */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center space-x-2.5">
-          <div className="bg-blue-600 text-white p-2 rounded-xl">
-            <ArrowRightLeft className="h-5 w-5" />
+      <nav className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center space-x-2">
+          <div className={`p-1.5 rounded-lg text-white ${isA ? 'bg-blue-600' : 'bg-teal-600'}`}>
+            <ArrowRightLeft className="h-4.5 w-4.5" />
           </div>
-          <span className="font-extrabold text-lg tracking-tight text-slate-900">Quantum Trust Retail</span>
+          <span className="font-extrabold text-sm tracking-tight text-slate-900">
+            {isA ? 'JPMorgan Retail Portal' : 'HDFC Retail Portal'}
+          </span>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <div className="text-right">
-            <p className="text-xs text-slate-500 font-medium">Logged in as</p>
-            <p className="text-sm font-semibold text-slate-800">{username}</p>
+            <p className="text-[10px] text-slate-500 font-medium">Account User</p>
+            <p className="text-xs font-semibold text-slate-800">{username}</p>
           </div>
           <button
             onClick={logout}
-            className="text-slate-400 hover:text-rose-600 p-2 hover:bg-slate-50 rounded-xl transition duration-200"
+            className="text-slate-400 hover:text-rose-600 p-1.5 hover:bg-slate-50 rounded-lg transition duration-200"
             title="Log Out"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-4.5 w-4.5" />
           </button>
         </div>
       </nav>
 
       {/* Main dashboard content */}
-      <div className="max-w-6xl mx-auto w-full px-6 py-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="w-full px-4 py-6 space-y-5">
         
-        {/* Left Side: Balance Card and Quick Actions */}
-        <div className="md:col-span-1 space-y-6">
-          {/* Account Card */}
-          <div className="bg-gradient-to-br from-blue-700 to-indigo-800 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-            <div className="absolute right-[-20px] bottom-[-20px] opacity-10 text-white pointer-events-none">
-              <CreditCard className="h-40 w-40" />
-            </div>
-            
-            <p className="text-xs text-blue-100 uppercase tracking-widest font-semibold">Primary Account</p>
-            <h3 className="text-3xl font-extrabold mt-3 tracking-tight">${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-            
-            <div className="mt-8 flex justify-between items-end">
-              <div>
-                <p className="text-[10px] text-blue-200 font-semibold uppercase tracking-wider">Account Number</p>
-                <p className="font-mono text-sm tracking-wider font-medium mt-1">{accountNumber ? accountNumber.replace(/(.{4})/g, '$1 ') : '---'}</p>
-              </div>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Active</span>
-            </div>
+        {/* Balance Card */}
+        <div className={`rounded-xl p-5 text-white shadow-md relative overflow-hidden bg-gradient-to-br ${
+          isA ? 'from-blue-600 to-indigo-700' : 'from-teal-600 to-cyan-700'
+        }`}>
+          <div className="absolute right-[-15px] bottom-[-15px] opacity-10 text-white pointer-events-none">
+            <CreditCard className="h-28 w-28" />
           </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <h4 className="font-bold text-sm text-slate-800 mb-4 tracking-tight">Quick Actions</h4>
-            <button
-              onClick={() => setScreen('TRANSFER')}
-              className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 px-4 rounded-xl shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 transition duration-200 text-center flex items-center justify-center gap-2"
-            >
-              <ArrowRightLeft className="h-4 w-4" />
-              Transfer Funds
-            </button>
+          
+          <p className="text-[10px] text-blue-100 uppercase tracking-widest font-bold">Ledger Balance</p>
+          <h3 className="text-2xl font-extrabold mt-1 tracking-tight">
+            ${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </h3>
+          
+          <div className="mt-6 flex justify-between items-end">
+            <div>
+              <p className="text-[9px] text-blue-200 font-semibold uppercase tracking-wider">Account Number</p>
+              <p className="font-mono text-xs tracking-wider font-medium mt-0.5">
+                {accountNumber ? accountNumber.replace(/(.{4})/g, '$1 ') : '---'}
+              </p>
+            </div>
+            <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Online</span>
           </div>
         </div>
 
-        {/* Right Side: Recent Transactions Log */}
-        <div className="md:col-span-2">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden h-full flex flex-col">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-slate-500" />
-              <h4 className="font-bold text-sm text-slate-800 tracking-tight">Transaction Statement History</h4>
-            </div>
+        {/* Transfer Funds CTA (Only for Sender A) */}
+        {isA && setScreen && (
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <button
+              onClick={() => setScreen('TRANSFER')}
+              className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-2.5 px-4 rounded-lg shadow-sm transition duration-200 text-center flex items-center justify-center gap-1.5 text-xs"
+            >
+              <ArrowRightLeft className="h-4 w-4" />
+              Transfer Funds to Bob (HDFC)
+            </button>
+          </div>
+        )}
 
-            <div className="flex-1 min-h-[300px] overflow-y-auto">
-              {history.length === 0 ? (
-                <div className="text-slate-400 text-xs text-center py-20">
-                  No transaction history recorded on this account ledger.
-                </div>
-              ) : (
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/50 border-b border-slate-100 text-slate-400 font-semibold select-none">
-                      <th className="px-6 py-3.5">Date / Time</th>
-                      <th className="px-6 py-3.5">Description</th>
-                      <th className="px-6 py-3.5">Receiver / Sender</th>
-                      <th className="px-6 py-3.5 text-right">Amount</th>
-                      <th className="px-6 py-3.5 text-center">Status</th>
+        {/* Recent Transactions Log */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center space-x-1.5">
+            <Clock className="h-4 w-4 text-slate-500" />
+            <h4 className="font-bold text-xs text-slate-800 tracking-tight">Statement History</h4>
+          </div>
+
+          <div className="max-h-[220px] overflow-y-auto">
+            {history.length === 0 ? (
+              <div className="text-slate-400 text-[10px] text-center py-10 select-none">
+                No transaction statements recorded.
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse text-[10px]">
+                <thead>
+                  <tr className="bg-slate-50/50 border-b border-slate-100 text-slate-400 font-semibold select-none">
+                    <th className="px-4 py-2">Date</th>
+                    <th className="px-4 py-2">Memo</th>
+                    <th className="px-4 py-2 text-right">Amount</th>
+                    <th className="px-4 py-2 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-600 font-medium">
+                  {history.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-slate-50/30 transition-colors">
+                      <td className="px-4 py-2.5 whitespace-nowrap text-slate-400 font-semibold">
+                        {tx.date.substring(5)} {/* truncate year for space */}
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-800 truncate max-w-[80px]" title={tx.description}>
+                        {tx.description}
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <span className={`font-bold flex items-center justify-end gap-0.5 ${
+                          tx.type === 'CREDIT' ? 'text-emerald-600' : 'text-rose-600'
+                        }`}>
+                          {tx.type === 'CREDIT' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {tx.type === 'CREDIT' ? '+' : '-'}${tx.amount.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-center">
+                        <span className={`inline-flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase ${
+                          tx.status === 'SUCCESS' || tx.status === 'COMPLETED' || tx.status === 'SETTLED'
+                            ? 'bg-emerald-50 text-emerald-700' 
+                            : tx.status === 'FAILED' 
+                            ? 'bg-rose-50 text-rose-700' 
+                            : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {tx.status === 'SUCCESS' || tx.status === 'COMPLETED' || tx.status === 'SETTLED' ? 'Settled' : tx.status}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-600 font-medium">
-                    {history.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-slate-50/30 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-slate-400 font-semibold">{tx.date}</td>
-                        <td className="px-6 py-4 text-slate-800">{tx.description}</td>
-                        <td className="px-6 py-4">{tx.other_party}</td>
-                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <span className={`font-bold flex items-center justify-end gap-1 ${tx.type === 'CREDIT' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {tx.type === 'CREDIT' ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                            {tx.type === 'CREDIT' ? '+' : '-'}${tx.amount.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                            tx.status === 'SUCCESS' || tx.status === 'COMPLETED' || tx.status === 'SETTLED'
-                              ? 'bg-emerald-50 text-emerald-700' 
-                              : tx.status === 'FAILED' 
-                              ? 'bg-rose-50 text-rose-700' 
-                              : 'bg-amber-50 text-amber-700'
-                          }`}>
-                            {tx.status === 'SUCCESS' || tx.status === 'COMPLETED' || tx.status === 'SETTLED' ? 'Settled' : tx.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 

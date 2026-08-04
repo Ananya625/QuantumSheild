@@ -68,3 +68,4 @@ class TransferRequest(BaseModel):
     receiver_account: str
     amount: float
     description: str
+    security_mode: str = "classical"

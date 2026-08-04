@@ -3,7 +3,7 @@ import { useTransaction } from '../context/TransactionContext';
 import { ArrowLeft, Send, ShieldCheck } from 'lucide-react';
 
 export const TransferForm: React.FC = () => {
-  const { setScreen, initiateTransfer, balance } = useTransaction();
+  const { setScreenA: setScreen, initiateTransfer, balanceA: balance } = useTransaction();
   
   // Beneficiary details
   const [beneficiary, setBeneficiary] = useState('987654321');
@@ -39,7 +39,7 @@ export const TransferForm: React.FC = () => {
     }
 
     // Initiate backend background coordinator execution
-    initiateTransfer(beneficiary, amountVal, description);
+    initiateTransfer(amountVal, description);
   };
 
   return (

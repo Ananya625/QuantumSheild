@@ -27,9 +27,24 @@ export interface CryptoState {
   tlsCaCert?: string;
   packetData?: any;
   settlementDetails?: any;
+  senderBank?: string;
+  receiverBank?: string;
+  elapsedTime?: number;
+  
+  // Phase II - PQC parameters
+  securityMode?: 'classical' | 'quantumshield';
+  bb84AliceBits?: string;
+  bb84AliceBases?: string;
+  bb84BobBases?: string;
+  bb84Qber?: number;
+  bb84Secret?: string;
+  mlkemPublicKey?: string;
+  mlkemCiphertext?: string;
+  mlkemSecret?: string;
+  mldsaPublicKey?: string;
+  mldsaSignature?: string;
 }
 
-// Router screens for icici/hdfc-style shell
 export type AppScreen = 
   | 'LOGIN'
   | 'DASHBOARD'
@@ -64,40 +79,71 @@ export interface TransactionHistoryItem {
 }
 
 interface TransactionContextType {
-  screen: AppScreen;
-  setScreen: (scr: AppScreen) => void;
-  sessionId: string | null;
-  username: string | null;
-  accountNumber: string | null;
-  balance: number;
-  history: TransactionHistoryItem[];
+  // Screen Router States
+  screenA: AppScreen;
+  setScreenA: (scr: AppScreen) => void;
+  screenB: AppScreen;
+  setScreenB: (scr: AppScreen) => void;
+
+  // Session A (Bank A - JPMorgan - Sender)
+  sessionIdA: string | null;
+  usernameA: string | null;
+  accountNumberA: string | null;
+  balanceA: number;
+  historyA: TransactionHistoryItem[];
+
+  // Session B (Bank B - HDFC - Receiver)
+  sessionIdB: string | null;
+  usernameB: string | null;
+  accountNumberB: string | null;
+  balanceB: number;
+  historyB: TransactionHistoryItem[];
   
-  // Active transfer state
+  // Shared Active Transfer State
   activeTxId: number | null;
   pipelineStatus: PipelineStatus;
   logs: LogEntry[];
   crypto: CryptoState;
   errorMessage: string | null;
   
+  // Security Mode Switch
+  securityMode: 'classical' | 'quantumshield';
+  setSecurityMode: (mode: 'classical' | 'quantumshield') => void;
+  
   // Actions
-  login: (username: string) => Promise<boolean>;
-  logout: () => void;
-  initiateTransfer: (beneficiaryAcct: string, amount: number, description: string) => Promise<void>;
-  fetchAccountData: () => Promise<void>;
+  loginA: (username: string) => Promise<boolean>;
+  logoutA: () => void;
+  loginB: (username: string) => Promise<boolean>;
+  logoutB: () => void;
+  quickDemoLogin: () => Promise<void>;
+  initiateTransfer: (amount: number, description: string) => Promise<void>;
+  fetchAccountDataA: () => Promise<void>;
+  fetchAccountDataB: () => Promise<void>;
   resetTransferState: () => void;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
 
 export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [screen, setScreen] = useState<AppScreen>('LOGIN');
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
-  const [accountNumber, setAccountNumber] = useState<string | null>(null);
-  const [balance, setBalance] = useState<number>(5000);
-  const [history, setHistory] = useState<TransactionHistoryItem[]>([]);
+  // Screen states for dual views
+  const [screenA, setScreenA] = useState<AppScreen>('LOGIN');
+  const [screenB, setScreenB] = useState<AppScreen>('LOGIN');
+
+  // Party A: JPMorgan (Alice)
+  const [sessionIdA, setSessionIdA] = useState<string | null>(null);
+  const [usernameA, setUsernameA] = useState<string | null>(null);
+  const [accountNumberA, setAccountNumberA] = useState<string | null>(null);
+  const [balanceA, setBalanceA] = useState<number>(5000);
+  const [historyA, setHistoryA] = useState<TransactionHistoryItem[]>([]);
+
+  // Party B: HDFC (Bob)
+  const [sessionIdB, setSessionIdB] = useState<string | null>(null);
+  const [usernameB, setUsernameB] = useState<string | null>(null);
+  const [accountNumberB, setAccountNumberB] = useState<string | null>(null);
+  const [balanceB, setBalanceB] = useState<number>(1000);
+  const [historyB, setHistoryB] = useState<TransactionHistoryItem[]>([]);
   
-  // Processing States
+  // Shared Processing Pipeline state
   const [activeTxId, setActiveTxId] = useState<number | null>(null);
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>('PENDING');
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -105,62 +151,110 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [ws, setWs] = useState<WebSocket | null>(null);
 
-  // Close websocket on unmount
+  // Security mode: 'classical' or 'quantumshield'
+  const [securityMode, setSecurityMode] = useState<'classical' | 'quantumshield'>('classical');
+
   useEffect(() => {
     return () => {
       if (ws) ws.close();
     };
   }, [ws]);
 
-  const fetchAccountData = useCallback(async () => {
-    if (!username) return;
+  // Account retrieval routines
+  const fetchAccountDataA = useCallback(async () => {
+    if (!usernameA) return;
     try {
-      // 1. Fetch balances
       const accsRes = await api.getAccounts();
-      const userAcc = accsRes.data.find((a: any) => a.owner_name === username);
+      const userAcc = accsRes.data.find((a: any) => a.owner_name === usernameA);
       if (userAcc) {
-        setAccountNumber(userAcc.account_number);
-        setBalance(userAcc.balance);
-        
-        // 2. Fetch history
+        setAccountNumberA(userAcc.account_number);
+        setBalanceA(userAcc.balance);
         const histRes = await api.getTransactionHistory(userAcc.account_number);
-        setHistory(histRes.data);
+        setHistoryA(histRes.data);
       }
     } catch (e) {
-      console.error("Error fetching account logs:", e);
+      console.error("Error fetching JPMorgan ledger logs:", e);
     }
-  }, [username]);
+  }, [usernameA]);
 
-  const login = async (user: string): Promise<boolean> => {
+  const fetchAccountDataB = useCallback(async () => {
+    if (!usernameB) return;
+    try {
+      const accsRes = await api.getAccounts();
+      const userAcc = accsRes.data.find((a: any) => a.owner_name === usernameB);
+      if (userAcc) {
+        setAccountNumberB(userAcc.account_number);
+        setBalanceB(userAcc.balance);
+        const histRes = await api.getTransactionHistory(userAcc.account_number);
+        setHistoryB(histRes.data);
+      }
+    } catch (e) {
+      console.error("Error fetching HDFC ledger logs:", e);
+    }
+  }, [usernameB]);
+
+  // Login actions
+  const loginA = async (user: string): Promise<boolean> => {
     try {
       const res = await api.login({ username: user, password: 'password123' });
-      setSessionId(res.data.session_id);
-      setUsername(user);
+      setSessionIdA(res.data.session_id);
+      setUsernameA(user);
       
-      // Seed initial local details
       const accsRes = await api.getAccounts();
       const userAcc = accsRes.data.find((a: any) => a.owner_name === user);
       if (userAcc) {
-        setAccountNumber(userAcc.account_number);
-        setBalance(userAcc.balance);
+        setAccountNumberA(userAcc.account_number);
+        setBalanceA(userAcc.balance);
       }
-      
-      setScreen('DASHBOARD');
+      setScreenA('DASHBOARD');
       return true;
     } catch (e) {
-      console.error("Login call failed:", e);
+      console.error("JPMorgan Login failed:", e);
       return false;
     }
   };
 
-  const logout = () => {
-    setSessionId(null);
-    setUsername(null);
-    setAccountNumber(null);
-    setBalance(5000);
-    setHistory([]);
-    resetTransferState();
-    setScreen('LOGIN');
+  const loginB = async (user: string): Promise<boolean> => {
+    try {
+      const res = await api.login({ username: user, password: 'password123' });
+      setSessionIdB(res.data.session_id);
+      setUsernameB(user);
+      
+      const accsRes = await api.getAccounts();
+      const userAcc = accsRes.data.find((a: any) => a.owner_name === user);
+      if (userAcc) {
+        setAccountNumberB(userAcc.account_number);
+        setBalanceB(userAcc.balance);
+      }
+      setScreenB('DASHBOARD');
+      return true;
+    } catch (e) {
+      console.error("HDFC Login failed:", e);
+      return false;
+    }
+  };
+
+  const logoutA = () => {
+    setSessionIdA(null);
+    setUsernameA(null);
+    setAccountNumberA(null);
+    setBalanceA(5000);
+    setHistoryA([]);
+    setScreenA('LOGIN');
+  };
+
+  const logoutB = () => {
+    setSessionIdB(null);
+    setUsernameB(null);
+    setAccountNumberB(null);
+    setBalanceB(1000);
+    setHistoryB([]);
+    setScreenB('LOGIN');
+  };
+
+  const quickDemoLogin = async () => {
+    await loginA('Alice');
+    await loginB('Bob');
   };
 
   const resetTransferState = useCallback(() => {
@@ -175,36 +269,38 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setErrorMessage(null);
   }, [ws]);
 
-  const initiateTransfer = async (beneficiaryAcct: string, amount: number, description: string) => {
-    if (!sessionId || !accountNumber) return;
+  const initiateTransfer = async (amount: number, description: string) => {
+    if (!sessionIdA || !accountNumberA) return;
     
     resetTransferState();
-    setScreen('PROCESSING');
+    
+    // Switch both screens to processing
+    setScreenA('PROCESSING');
+    setScreenB('PROCESSING');
     setPipelineStatus('PENDING');
     
     try {
-      // 1. Initiate transfer REST call
       const payload: TransferPayload = {
-        session_id: sessionId,
-        sender_account: accountNumber,
-        receiver_account: beneficiaryAcct,
+        session_id: sessionIdA,
+        sender_account: accountNumberA,
+        receiver_account: '987654321', // Bob's HDFC account
         amount,
-        description
+        description,
+        security_mode: securityMode
       };
       
       const res = await api.transfer(payload);
       const txId = res.data.transaction_id;
       setActiveTxId(txId);
       
-      // 2. Connect WebSocket to follow the background thread
-      const socket = new WebSocket(`ws://localhost:8000/ws/transaction/${sessionId}`);
+      // Connect to WebSocket gateway
+      const socket = new WebSocket(`ws://localhost:8000/ws/transaction/${sessionIdA}`);
       setWs(socket);
       
-      socket.onmessage = (event) => {
+      socket.onmessage = async (event) => {
         try {
           const payload = JSON.parse(event.data);
           
-          // Append timeline log entries
           setLogs((prev) => [...prev, {
             event: payload.event,
             timestamp: payload.timestamp,
@@ -212,11 +308,11 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
             data: payload.data
           }]);
           
-          // Parse status from backend pipeline updates
+          // Pipeline status mappings
           if (payload.event === 'AUTH_VERIFYING') {
             setPipelineStatus('AUTHENTICATING');
           } else if (payload.event === 'AUTH_SUCCESS') {
-            setPipelineStatus('TLS_HANDSHAKE'); // advance to TLS handshake
+            setPipelineStatus('TLS_HANDSHAKE');
           } else if (payload.event === 'TLS_STARTED') {
             setPipelineStatus('TLS_HANDSHAKE');
           } else if (payload.event === 'TLS_CERT_EXCHANGED') {
@@ -292,63 +388,149 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
               ...prev,
               settlementDetails: payload.data
             }));
-            // Update local balance immediately
-            if (username === 'Alice') {
-              setBalance(payload.data.sender_new_balance);
-            } else {
-              setBalance(payload.data.receiver_new_balance);
-            }
+            
+            // Sync balances immediately
+            setBalanceA(payload.data.sender_new_balance);
+            setBalanceB(payload.data.receiver_new_balance);
+            
           } else if (payload.event === 'TRANSACTION_SUCCESS') {
             setPipelineStatus('COMPLETED');
-            setScreen('RECEIPT');
+            
+            // Fetch final parameters to ensure full alignment including PQC fields
+            try {
+              const details = await api.getTransactionDetails(txId);
+              setCrypto((prev) => ({
+                ...prev,
+                senderBank: details.data.sender_bank,
+                receiverBank: details.data.receiver_bank,
+                elapsedTime: details.data.elapsed_time,
+                securityMode: details.data.security_mode,
+                tlsServerCert: details.data.tls?.tls_cert,
+                tlsCaCert: details.data.tls?.tls_ca_cert,
+                clientDhPublicKey: details.data.dh?.client_dh_public,
+                serverDhPublicKey: details.data.dh?.server_dh_public,
+                sharedSecret: details.data.dh?.shared_secret,
+                sessionKey: details.data.session_key,
+                ciphertext: details.data.encryption?.ciphertext,
+                nonce: details.data.encryption?.nonce,
+                tag: details.data.encryption?.tag,
+                sha256Hash: details.data.encryption?.hash,
+                signature: details.data.signature?.signature_hex,
+                clientSigningPublicKey: details.data.signature?.client_signing_key,
+                
+                // PQC payload parameters
+                bb84AliceBits: details.data.bb84?.alice_bits,
+                bb84AliceBases: details.data.bb84?.alice_bases,
+                bb84BobBases: details.data.bb84?.bob_bases,
+                bb84Qber: details.data.bb84?.qber,
+                bb84Secret: details.data.bb84?.secret,
+                mlkemPublicKey: details.data.mlkem?.public_key,
+                mlkemCiphertext: details.data.mlkem?.ciphertext,
+                mlkemSecret: details.data.mlkem?.secret,
+                mldsaPublicKey: details.data.mldsa?.public_key,
+                mldsaSignature: details.data.mldsa?.signature
+              }));
+            } catch (err) {
+              console.error("Error fetching final transaction parameters:", err);
+            }
+            
+            setScreenA('RECEIPT');
+            setScreenB('RECEIPT');
+            
           } else if (payload.event === 'PIPELINE_FAILED') {
             setPipelineStatus('FAILED');
             setErrorMessage(payload.message);
-            setScreen('RECEIPT');
+            
+            try {
+              const details = await api.getTransactionDetails(txId);
+              setCrypto((prev) => ({
+                ...prev,
+                senderBank: details.data.sender_bank,
+                receiverBank: details.data.receiver_bank,
+                elapsedTime: details.data.elapsed_time,
+                securityMode: details.data.security_mode,
+                bb84AliceBits: details.data.bb84?.alice_bits,
+                bb84AliceBases: details.data.bb84?.alice_bases,
+                bb84BobBases: details.data.bb84?.bob_bases,
+                bb84Qber: details.data.bb84?.qber,
+                bb84Secret: details.data.bb84?.secret,
+                mlkemPublicKey: details.data.mlkem?.public_key,
+                mlkemCiphertext: details.data.mlkem?.ciphertext,
+                mlkemSecret: details.data.mlkem?.secret,
+                mldsaPublicKey: details.data.mldsa?.public_key,
+                mldsaSignature: details.data.mldsa?.signature
+              }));
+            } catch (err) {
+              console.error("Error fetching failed transaction parameters:", err);
+            }
+            
+            setScreenA('RECEIPT');
+            setScreenB('RECEIPT');
           }
         } catch (error) {
-          console.error("Error decoding websocket broadcast:", error);
+          console.error("Error decoding websocket packet:", error);
         }
       };
 
       socket.onerror = (e) => {
-        console.error("WebSocket socket error:", e);
+        console.error("WebSocket routing socket error:", e);
       };
       
     } catch (err: any) {
-      console.error("Refined transfer failed:", err);
+      console.error("Inter-bank transfer initiation failed:", err);
       setPipelineStatus('FAILED');
-      setErrorMessage(err.response?.data?.detail || err.message || 'System communication error');
-      setScreen('RECEIPT');
+      setErrorMessage(err.response?.data?.detail || err.message || 'Inter-bank socket communications abort');
+      setScreenA('RECEIPT');
+      setScreenB('RECEIPT');
     }
   };
 
-  // Sync historical logging on dashboard loads
+  // Sync log tables on dashboards loading
   useEffect(() => {
-    if (screen === 'DASHBOARD') {
-      fetchAccountData();
-    }
-  }, [screen, fetchAccountData]);
+    if (screenA === 'DASHBOARD') fetchAccountDataA();
+  }, [screenA, fetchAccountDataA]);
+
+  useEffect(() => {
+    if (screenB === 'DASHBOARD') fetchAccountDataB();
+  }, [screenB, fetchAccountDataB]);
 
   return (
     <TransactionContext.Provider
       value={{
-        screen,
-        setScreen,
-        sessionId,
-        username,
-        accountNumber,
-        balance,
-        history,
+        screenA,
+        setScreenA,
+        screenB,
+        setScreenB,
+        
+        sessionIdA,
+        usernameA,
+        accountNumberA,
+        balanceA,
+        historyA,
+        
+        sessionIdB,
+        usernameB,
+        accountNumberB,
+        balanceB,
+        historyB,
+        
         activeTxId,
         pipelineStatus,
         logs,
         crypto,
         errorMessage,
-        login,
-        logout,
+        
+        securityMode,
+        setSecurityMode,
+        
+        loginA,
+        logoutA,
+        loginB,
+        logoutB,
+        quickDemoLogin,
         initiateTransfer,
-        fetchAccountData,
+        fetchAccountDataA,
+        fetchAccountDataB,
         resetTransferState,
       }}
     >
