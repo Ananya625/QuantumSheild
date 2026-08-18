@@ -6,9 +6,11 @@ import { TransactionPipeline } from './components/TransactionPipeline';
 import { SecurityInspector } from './components/SecurityInspector';
 import { PacketInspector } from './components/PacketInspector';
 import { LiveTimeline } from './components/LiveTimeline';
+
+import { QuantumThreatDemoModal } from './components/QuantumThreatDemoModal';
 import { 
   Lock, ShieldCheck, CheckCircle2, 
-  FileSearch, RefreshCw, Eye
+  FileSearch, RefreshCw, Eye, Activity
 } from 'lucide-react';
 
 function AppContent() {
@@ -33,6 +35,8 @@ function AppContent() {
   // Inspector toggles
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [isPacketOpen, setIsPacketOpen] = useState(false);
+
+  const [isQuantumDemoOpen, setIsQuantumDemoOpen] = useState(false);
 
   // High-precision stopwatch
   const [elapsedTimeSec, setElapsedTimeSec] = useState<number>(0);
@@ -111,6 +115,15 @@ function AppContent() {
               QuantumShield
             </button>
           </div>
+
+          {/* Quantum Threat Demo Entry Point */}
+          <button
+            onClick={() => setIsQuantumDemoOpen(true)}
+            className="border border-purple-300 hover:bg-purple-50 text-purple-750 px-3 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition duration-200 cursor-pointer flex items-center gap-1.5 shadow-sm"
+          >
+            <Activity className="h-3 w-3 animate-pulse text-purple-650" />
+            ⚛ Quantum Threat Demo
+          </button>
 
           {showQuickLogin ? (
             <button
@@ -460,6 +473,14 @@ function AppContent() {
           </div>
         </div>
       )}
+
+
+
+      {/* 4. Quantum Threat Demo Modal */}
+      <QuantumThreatDemoModal
+        isOpen={isQuantumDemoOpen}
+        onClose={() => setIsQuantumDemoOpen(false)}
+      />
 
       {/* 2. Wireshark Packet Inspector Modal */}
       {isPacketOpen && (

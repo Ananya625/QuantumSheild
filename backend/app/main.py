@@ -25,6 +25,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from .quantum.router import router as quantum_router
+app.include_router(quantum_router)
+
 def seed_database():
     db = next(get_db())
     try:
@@ -38,6 +41,8 @@ def seed_database():
                 balance=5000.00
             )
             db.add(alice)
+        else:
+            alice.balance = 5000.00
             
         bob = db.query(Account).filter(Account.owner_name == "Bob").first()
         if not bob:
@@ -48,6 +53,8 @@ def seed_database():
                 balance=1000.00
             )
             db.add(bob)
+        else:
+            bob.balance = 1000.00
         db.commit()
         db.refresh(alice)
         db.refresh(bob)
@@ -178,6 +185,11 @@ def initiate_transfer(payload: TransferRequest, background_tasks: BackgroundTask
     receiver = db.query(Account).filter(Account.account_number == payload.receiver_account).first()
     if not sender or not receiver:
         raise HTTPException(status_code=400, detail="Account records not found in core ledger.")
+        
+    # Auto-replenish Alice's balance if it's lower than the transfer amount
+    if sender.owner_name == "Alice" and sender.balance < payload.amount:
+        sender.balance = 5000.00
+        db.commit()
         
     # Create transaction
     tx = Transaction(

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTransaction } from '../context/TransactionContext';
 import { 
-  ChevronDown, ChevronUp, Terminal, ShieldCheck, Cpu, Key, FileLock2, Lock
+  ChevronDown, ChevronUp, Terminal, ShieldCheck, Cpu, Key, FileLock2, Lock, AlertTriangle
 } from 'lucide-react';
 
 interface AccordionItemProps {
@@ -63,7 +63,14 @@ const AccordionItem: React.FC<AccordionItemProps> = ({
 };
 
 export const SecurityInspector: React.FC = () => {
-  const { pipelineStatus, crypto } = useTransaction();
+  const { pipelineStatus, crypto, activeSimulation } = useTransaction();
+  
+  const simStatus = activeSimulation.status;
+  const isShorActive = activeSimulation.algorithm === 'shor' && ['completed', 'decrypted', 'analyzed'].includes(simStatus);
+  const isShorDecrypted = activeSimulation.algorithm === 'shor' && ['decrypted', 'analyzed'].includes(simStatus);
+  const isShorAnalyzed = activeSimulation.algorithm === 'shor' && simStatus === 'analyzed';
+  
+
   
   // Track which single section is open
   const [activeSection, setActiveSection] = useState<string | null>('application');
@@ -97,6 +104,21 @@ export const SecurityInspector: React.FC = () => {
   };
 
   const getStatus = (section: string): { state: 'pending' | 'active' | 'completed' | 'failed'; label: string } => {
+    // Override status when simulation has completed (only in Classical mode)
+    if (crypto.securityMode !== 'quantumshield') {
+      if (isShorActive) {
+        if (section === 'keyExchange') return { state: 'failed', label: 'Key Exchange Compromised' };
+        if (section === 'sessionKey') return { state: 'failed', label: 'Session Key Recovered' };
+      }
+      if (isShorDecrypted) {
+        if (section === 'encryption') return { state: 'failed', label: 'Payload Decrypted' };
+      }
+      if (isShorAnalyzed) {
+        if (section === 'transport') return { state: 'completed', label: 'Protocol Secure (⚠️ Underlying vulnerable)' };
+        if (section === 'signature') return { state: 'failed', label: 'Signature Vulnerable' };
+      }
+    }
+
     if (pipelineStatus === 'FAILED') {
       // Check if it failed on this stage
       if (section === 'application' && pipelineStatus === 'FAILED') return { state: 'failed', label: 'Aborted' };
@@ -193,6 +215,15 @@ export const SecurityInspector: React.FC = () => {
         icon={<Lock className="h-4.5 w-4.5" />}
       >
         <div className="space-y-3">
+          {crypto.securityMode !== 'quantumshield' && isShorAnalyzed && (
+            <div className="bg-rose-50 border border-rose-100 text-rose-700 p-2.5 rounded-xl text-[10px] leading-normal font-semibold space-y-1">
+              <div className="flex items-center gap-1 font-bold text-rose-800">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                Underlying Algorithms Vulnerable
+              </div>
+              <p>TLS 1.3 protocol itself remains secure today, but its underlying public-key exchange (ECDHE) and signature verification (ECDSA) algorithms face future quantum vulnerability from Shor's algorithm.</p>
+            </div>
+          )}
           <div className="flex justify-between border-b border-slate-50 py-1">
             <span className="text-slate-400">TLS Standard</span>
             <span className="font-bold text-slate-800 font-mono">TLS 1.3 (RFC 8446)</span>
@@ -323,6 +354,15 @@ export const SecurityInspector: React.FC = () => {
                 </div>
               </div>
             )}
+            {crypto.securityMode !== 'quantumshield' && isShorActive && (
+              <div className="bg-rose-50 border border-rose-100 text-rose-700 p-2.5 rounded-xl text-[10px] leading-normal font-semibold space-y-1 mt-3">
+                <div className="flex items-center gap-1 font-bold text-rose-800 animate-pulse">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-rose-600" />
+                  Key Exchange Compromised
+                </div>
+                <p>Future quantum computers running Shor's algorithm threaten the elliptic curve discrete logarithm problem used by ECDHE, allowing adversaries to calculate the shared secret from public keys.</p>
+              </div>
+            )}
           </div>
         )}
       </AccordionItem>
@@ -337,6 +377,15 @@ export const SecurityInspector: React.FC = () => {
         icon={<Cpu className="h-4.5 w-4.5" />}
       >
         <div className="space-y-3">
+          {crypto.securityMode !== 'quantumshield' && isShorDecrypted && (
+            <div className="bg-rose-50 border border-rose-100 text-rose-700 p-2.5 rounded-xl text-[10px] leading-normal font-semibold space-y-1">
+              <div className="flex items-center gap-1 font-bold text-rose-800">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                Historical Session Confidentiality Compromised
+              </div>
+              <p>Adversaries utilizing a "Harvest Now, Decrypt Later" strategy can now retroactively decrypt this captured TLS session because the key exchange was compromised.</p>
+            </div>
+          )}
           <div className="flex justify-between border-b border-slate-50 py-1">
             <span className="text-slate-400">Derivation KDF</span>
             <span className="font-bold text-slate-800 font-mono">
@@ -376,6 +425,25 @@ export const SecurityInspector: React.FC = () => {
         icon={<FileLock2 className="h-4.5 w-4.5" />}
       >
         <div className="space-y-3">
+
+          {crypto.securityMode !== 'quantumshield' && isShorDecrypted && (
+            <div className="bg-rose-50 border border-rose-100 text-rose-700 p-2.5 rounded-xl text-[10px] leading-normal font-semibold space-y-1">
+              <div className="flex items-center gap-1 font-bold text-rose-850">
+                <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                Payload Confidentiality Compromised
+              </div>
+              <p>The AES-256 encrypted payload is fully readable because its session key was recovered from the compromised key exchange.</p>
+            </div>
+          )}
+          {crypto.securityMode !== 'quantumshield' && isShorActive && !isShorDecrypted && (
+            <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 p-2.5 rounded-xl text-[10px] leading-normal font-semibold space-y-1">
+              <div className="flex items-center gap-1 font-bold text-emerald-800">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                Algorithm Secure (Shor Resistant)
+              </div>
+              <p>AES symmetric algorithm itself is not broken by Shor's algorithm, but confidentiality depends on protecting the session key from exchange compromise.</p>
+            </div>
+          )}
           <div className="flex justify-between border-b border-slate-50 py-1">
             <span className="text-slate-400">Encryption Standard</span>
             <span className="font-bold text-slate-800 font-mono">AES-256-GCM (Authenticated)</span>
@@ -441,6 +509,15 @@ export const SecurityInspector: React.FC = () => {
         ) : (
           // Classical ECDSA signatures
           <div className="space-y-3">
+            {crypto.securityMode !== 'quantumshield' && isShorAnalyzed && (
+              <div className="bg-rose-50 border border-rose-100 text-rose-700 p-2.5 rounded-xl text-[10px] leading-normal font-semibold space-y-1 mb-2">
+                <div className="flex items-center gap-1 font-bold text-rose-800">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  ECDSA Quantum Vulnerability Identified
+                </div>
+                <p>Future quantum computers running Shor's algorithm threaten the elliptic curve discrete logarithm problem used by ECDSA, enabling signature forgery and transaction authentication spoofing.</p>
+              </div>
+            )}
             <div className="flex justify-between border-b border-slate-50 py-1">
               <span className="text-slate-400">Signature Standard</span>
               <span className="font-bold text-slate-800 font-mono">ECDSA (SECP256R1)</span>

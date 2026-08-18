@@ -45,6 +45,17 @@ export interface CryptoState {
   mldsaSignature?: string;
 }
 
+export interface QuantumSimulationState {
+  algorithm: string | null;
+  status: 'idle' | 'running' | 'completed' | 'decrypted' | 'analyzed' | 'failed';
+  logs: { message: string; timestamp: string }[];
+  result: any;
+  assessment: any;
+  metadata: any;
+  decryption?: any;
+  key_recovery?: any;
+}
+
 export type AppScreen = 
   | 'LOGIN'
   | 'DASHBOARD'
@@ -120,6 +131,13 @@ interface TransactionContextType {
   fetchAccountDataA: () => Promise<void>;
   fetchAccountDataB: () => Promise<void>;
   resetTransferState: () => void;
+  
+  // Quantum Simulation
+  activeSimulation: QuantumSimulationState;
+  runQuantumSimulation: (algorithm: string, params: object) => Promise<void>;
+  decryptCapturedTransaction: () => void;
+  analyzeSecurityImpact: () => void;
+  resetSimulationState: () => void;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
@@ -153,6 +171,37 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Security mode: 'classical' or 'quantumshield'
   const [securityMode, setSecurityMode] = useState<'classical' | 'quantumshield'>('classical');
+
+  // Quantum Simulation implementation
+  const [activeSimulation, setActiveSimulation] = useState<QuantumSimulationState>({
+    algorithm: null,
+    status: 'idle',
+    logs: [],
+    result: null,
+    assessment: null,
+    metadata: null,
+    key_recovery: null
+  });
+
+  const simulationTimeoutsRef = React.useRef<any[]>([]);
+
+  const clearSimulationTimeouts = useCallback(() => {
+    simulationTimeoutsRef.current.forEach(id => clearTimeout(id));
+    simulationTimeoutsRef.current = [];
+  }, []);
+
+  const resetSimulationState = useCallback(() => {
+    clearSimulationTimeouts();
+    setActiveSimulation({
+      algorithm: null,
+      status: 'idle',
+      logs: [],
+      result: null,
+      assessment: null,
+      metadata: null,
+      key_recovery: null
+    });
+  }, [clearSimulationTimeouts]);
 
   useEffect(() => {
     return () => {
@@ -267,7 +316,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setLogs([]);
     setCrypto({});
     setErrorMessage(null);
-  }, [ws]);
+    resetSimulationState();
+  }, [ws, resetSimulationState]);
 
   const initiateTransfer = async (amount: number, description: string) => {
     if (!sessionIdA || !accountNumberA) return;
@@ -494,6 +544,91 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (screenB === 'DASHBOARD') fetchAccountDataB();
   }, [screenB, fetchAccountDataB]);
 
+
+
+  const runQuantumSimulation = async (algorithm: string, params: object) => {
+    clearSimulationTimeouts();
+    setActiveSimulation({
+      algorithm,
+      status: 'running',
+      logs: [],
+      result: null,
+      assessment: null,
+      metadata: null
+    });
+    
+    try {
+      const res = await api.runQuantumSimulation(algorithm, params);
+      const data = res.data;
+      
+      if (data && data.success) {
+        const backendLogs = data.logs || [];
+        
+        // 1. Playback logs sequentially based on offset_ms
+        backendLogs.forEach((log: any) => {
+          const timeoutId = window.setTimeout(() => {
+            const timeStr = new Date().toLocaleTimeString([], { hour12: false });
+            setActiveSimulation(prev => ({
+              ...prev,
+              logs: [...prev.logs, { message: log.message, timestamp: timeStr }]
+            }));
+          }, log.offset_ms);
+          simulationTimeoutsRef.current.push(timeoutId);
+        });
+        
+        // 2. Schedule completion after last log
+        const lastOffset = backendLogs.length > 0 ? backendLogs[backendLogs.length - 1].offset_ms : 1000;
+        const completionTimeoutId = window.setTimeout(() => {
+          setActiveSimulation(prev => ({
+            ...prev,
+            status: 'completed',
+            result: data.quantum_result,
+            assessment: data.threat_assessment,
+            metadata: data.metadata,
+            decryption: data.decryption,
+            key_recovery: data.key_recovery
+          }));
+        }, lastOffset + 300);
+        simulationTimeoutsRef.current.push(completionTimeoutId);
+        
+      } else {
+        setActiveSimulation(prev => ({
+          ...prev,
+          status: 'failed',
+          logs: [{ message: "Error: Quantum simulation execution failed on backend.", timestamp: new Date().toLocaleTimeString([], { hour12: false }) }]
+        }));
+      }
+    } catch (err: any) {
+      console.error("Error executing quantum simulation:", err);
+      setActiveSimulation(prev => ({
+        ...prev,
+        status: 'failed',
+        logs: [{ message: `Exception: ${err.message || 'Server connection abort'}`, timestamp: new Date().toLocaleTimeString([], { hour12: false }) }]
+      }));
+    }
+  };
+
+  const decryptCapturedTransaction = () => {
+    setActiveSimulation(prev => ({
+      ...prev,
+      status: 'decrypted'
+    }));
+  };
+
+  const analyzeSecurityImpact = () => {
+    setActiveSimulation(prev => ({
+      ...prev,
+      status: 'analyzed'
+    }));
+  };
+
+
+
+  // Clean up timeouts on unmount
+  useEffect(() => {
+    return () => clearSimulationTimeouts();
+  }, []);
+
   return (
     <TransactionContext.Provider
       value={{
@@ -532,6 +667,11 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         fetchAccountDataA,
         fetchAccountDataB,
         resetTransferState,
+        activeSimulation,
+        runQuantumSimulation,
+        decryptCapturedTransaction,
+        analyzeSecurityImpact,
+        resetSimulationState,
       }}
     >
       {children}
