@@ -108,6 +108,38 @@ def seed_database():
 
 seed_database()
 
+@app.post("/api/auth/register")
+def register_user(payload: Dict[str, Any], db: Session = Depends(get_db)):
+    username = payload.get("username")
+    account_number = payload.get("account_number")
+    bank_name = payload.get("bank_name", "JPMorgan")
+    device_id = payload.get("device_id", "Authorized Device")
+    
+    if not username or not account_number:
+        raise HTTPException(status_code=400, detail="Username and account number are required")
+        
+    # Check if username or account number already exists
+    existing_user = db.query(Account).filter(Account.owner_name == username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+        
+    existing_acc = db.query(Account).filter(Account.account_number == account_number).first()
+    if existing_acc:
+        raise HTTPException(status_code=400, detail="Account number already registered")
+        
+    # Create new account
+    new_account = Account(
+        account_number=account_number,
+        owner_name=username,
+        bank_name=bank_name,
+        balance=1000.00
+    )
+    db.add(new_account)
+    db.commit()
+    db.refresh(new_account)
+    
+    return {"success": True, "message": f"User {username} registered successfully at {bank_name}."}
+
 @app.post("/api/auth/login", response_model=LoginResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     # Check for predefined Alice/Bob accounts

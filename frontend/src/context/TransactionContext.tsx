@@ -126,6 +126,7 @@ interface TransactionContextType {
   logoutA: () => void;
   loginB: (username: string) => Promise<boolean>;
   logoutB: () => void;
+  registerUser: (username: string, account_number: string, bank_name: string, device_id: string) => Promise<boolean>;
   quickDemoLogin: () => Promise<void>;
   initiateTransfer: (amount: number, description: string) => Promise<void>;
   fetchAccountDataA: () => Promise<void>;
@@ -170,7 +171,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   // Security mode: 'classical' or 'quantumshield'
-  const [securityMode, setSecurityMode] = useState<'classical' | 'quantumshield'>('classical');
+  const [securityMode, setSecurityMode] = useState<'classical' | 'quantumshield'>('quantumshield');
 
   // Quantum Simulation implementation
   const [activeSimulation, setActiveSimulation] = useState<QuantumSimulationState>({
@@ -283,6 +284,16 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
+  const registerUser = async (username: string, account_number: string, bank_name: string, device_id: string): Promise<boolean> => {
+    try {
+      await api.register({ username, account_number, bank_name, device_id });
+      return true;
+    } catch (e) {
+      console.error("User registration failed:", e);
+      return false;
+    }
+  };
+
   const logoutA = () => {
     setSessionIdA(null);
     setUsernameA(null);
@@ -324,9 +335,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     
     resetTransferState();
     
-    // Switch both screens to processing
+    // Switch only sender to processing. Bob remains on dashboard
     setScreenA('PROCESSING');
-    setScreenB('PROCESSING');
     setPipelineStatus('PENDING');
     
     try {
@@ -485,7 +495,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
             }
             
             setScreenA('RECEIPT');
-            setScreenB('RECEIPT');
+            // B remains on dashboard, sync history and balance
+            await fetchAccountDataB();
             
           } else if (payload.event === 'PIPELINE_FAILED') {
             setPipelineStatus('FAILED');
@@ -515,7 +526,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
             }
             
             setScreenA('RECEIPT');
-            setScreenB('RECEIPT');
+            // B remains on dashboard, sync history and balance
+            await fetchAccountDataB();
           }
         } catch (error) {
           console.error("Error decoding websocket packet:", error);
@@ -672,6 +684,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         decryptCapturedTransaction,
         analyzeSecurityImpact,
         resetSimulationState,
+        registerUser,
       }}
     >
       {children}

@@ -3,6 +3,7 @@ import { useTransaction } from '../context/TransactionContext';
 import { 
   ChevronDown, ChevronUp, Terminal, ShieldCheck, Cpu, Key, FileLock2, Lock, AlertTriangle
 } from 'lucide-react';
+import LiveTimeline from './LiveTimeline';
 
 interface AccordionItemProps {
   title: string;
@@ -324,6 +325,27 @@ export const SecurityInspector: React.FC = () => {
                 </div>
               </div>
             </div>
+            
+            {/* Visual hybrid key agreement concept diagram */}
+            <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-2 mt-3 select-none">
+              <span className="block text-[8px] text-purple-650 font-bold uppercase tracking-wider text-center">Hybrid Key Agreement (QuantumShield Mode)</span>
+              <div className="flex items-center justify-between text-[9px] text-slate-500 font-semibold leading-none">
+                <div className="bg-white border border-slate-200 px-2 py-1.5 rounded shadow-sm text-center font-bold">
+                  QKD (BB84 Entropy)
+                </div>
+                <span className="text-slate-400 font-bold text-xs">+</span>
+                <div className="bg-white border border-slate-200 px-2 py-1.5 rounded shadow-sm text-center font-bold">
+                  KEM (ML-KEM-768)
+                </div>
+                <span className="text-slate-400 font-bold text-xs">→</span>
+                <div className="bg-purple-100 border border-purple-200 text-purple-800 font-bold px-2 py-1.5 rounded shadow-sm text-center">
+                  AES-256 Session Key
+                </div>
+              </div>
+              <p className="text-[8.5px] text-slate-450 text-center leading-normal">
+                QKD establishes physical channel secrecy, and ML-KEM secures key encapsulation. HKDF combines both into a single quantum-safe session key.
+              </p>
+            </div>
           </div>
         ) : (
           // Classical ECDHE exchange
@@ -352,6 +374,29 @@ export const SecurityInspector: React.FC = () => {
                     {crypto.sharedSecret}
                   </pre>
                 </div>
+              </div>
+            )}
+            
+            {/* Visual ECDH key agreement concept diagram */}
+            {crypto.clientDhPublicKey && (
+              <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-2 mt-3 select-none">
+                <span className="block text-[8px] text-blue-650 font-bold uppercase tracking-wider text-center">Elliptic Curve Diffie-Hellman Agreement</span>
+                <div className="flex items-center justify-between text-[9px] text-slate-500 font-semibold leading-none">
+                  <div className="bg-white border border-slate-200 px-2 py-1.5 rounded shadow-sm text-center font-bold">
+                    Client Ephemeral Key
+                  </div>
+                  <span className="text-slate-400 font-bold text-xs">+</span>
+                  <div className="bg-white border border-slate-200 px-2 py-1.5 rounded shadow-sm text-center font-bold">
+                    Server Ephemeral Key
+                  </div>
+                  <span className="text-slate-400 font-bold text-xs">→</span>
+                  <div className="bg-blue-100 border border-blue-200 text-blue-800 font-bold px-2 py-1.5 rounded shadow-sm text-center">
+                    DH Shared Secret
+                  </div>
+                </div>
+                <p className="text-[8.5px] text-slate-450 text-center leading-normal">
+                  Each side computes the same shared secret by multiplying their own private exponent with the opponent's public point on the SECP256R1 curve.
+                </p>
               </div>
             )}
             {crypto.securityMode !== 'quantumshield' && isShorActive && (
@@ -547,6 +592,11 @@ export const SecurityInspector: React.FC = () => {
           </div>
         )}
       </AccordionItem>
+      
+      {/* Integrated Security & Operational Audit Log */}
+      <div className="border-t border-slate-200 mt-6 pt-4 h-[240px] flex flex-col shrink-0">
+        <LiveTimeline />
+      </div>
     </div>
   );
 };

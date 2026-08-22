@@ -91,6 +91,9 @@ export const api = {
   login: (data: { username: string; password: string }) => 
     apiClient.post('/api/auth/login', data),
     
+  register: (data: { username: string; account_number: string; bank_name: string; device_id: string }) => 
+    apiClient.post('/api/auth/register', data),
+    
   transfer: (data: TransferPayload) => 
     apiClient.post('/api/transaction/transfer', data),
     
