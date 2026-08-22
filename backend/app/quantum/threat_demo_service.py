@@ -224,12 +224,15 @@ class ToyQuantumThreatDemoService:
             },
             "ecdh": {
                 "shared_secret_reconstruction": True,
-                "shared_secret_verification": True
+                "shared_secret_verification": True,
+                "shared_secret_x": S_quantum[0],
+                "shared_secret_point": list(S_quantum)
             },
             "key_derivation": {
                 "algorithm": "HKDF-SHA256",
                 "key_length": 32,
-                "verification": True
+                "verification": True,
+                "derived_key_hex": quantum_aes_key.hex()
             },
             "decryption": {
                 "algorithm": "AES-256-GCM",

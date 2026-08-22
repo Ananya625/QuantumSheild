@@ -38,20 +38,27 @@ export interface QuantumMetrics {
 }
 
 export interface AttackDetails {
-  target_public_point: number[];
-  recovered_scalar: number;
-  scalar_verification: boolean;
+  target_public_point?: number[];
+  recovered_scalar?: number;
+  scalar_verification?: boolean;
+  algorithm?: string;
+  attack_applicability?: string;
+  key_recovery?: string;
+  status?: string;
 }
 
 export interface EcdhVerification {
   shared_secret_reconstruction: boolean;
   shared_secret_verification: boolean;
+  shared_secret_x?: number;
+  shared_secret_point?: number[];
 }
 
 export interface KeyDerivationDetails {
   algorithm: string;
   key_length: number;
   verification: boolean;
+  derived_key_hex?: string;
 }
 
 export interface DecryptionDetails {
