@@ -5,9 +5,10 @@ import { TransferForm } from './components/TransferForm';
 import { SecurityInspector } from './components/SecurityInspector';
 import { PacketInspector } from './components/PacketInspector';
 import { QuantumThreatDemoModal } from './components/QuantumThreatDemoModal';
+import { EveTerminalModal } from './components/EveTerminalModal';
 import { 
   LayoutDashboard, ArrowRightLeft, Shield, LogOut, Keyboard,
-  Lock, Eye, EyeOff, FileSearch, ShieldCheck, CheckCircle2, Activity
+  Lock, Eye, EyeOff, FileSearch, ShieldCheck, CheckCircle2, Activity, ShieldAlert, X, Check
 } from 'lucide-react';
 
 function AppContent() {
@@ -16,11 +17,27 @@ function AppContent() {
     loginA, loginB, quickDemoLogin,
     sessionIdA, sessionIdB,
     accountNumberA,
-    resetTransferState, crypto,
     logs,
+    crypto,
+    resetTransferState,
     registerUser,
-    pipelineStatus
+    pipelineStatus,
+    isBb84ModalOpen, setIsBb84ModalOpen,
+    isEavesdropping,
+    bb84SimulationResult, setBb84SimulationResult
   } = useTransaction();
+
+  const [showToast, setShowToast] = useState(false);
+
+  useEffect(() => {
+    if (bb84SimulationResult) {
+      setShowToast(true);
+      const timer = setTimeout(() => setShowToast(false), 15000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowToast(false);
+    }
+  }, [bb84SimulationResult]);
 
   // Tab controls for inner app shell (A is JPMorgan, B is HDFC)
   const [activeTabA, setActiveTabA] = useState<'dashboard' | 'transfer'>('dashboard');
@@ -674,6 +691,18 @@ function AppContent() {
                             </button>
                           </div>
 
+                          {/* Security Simulation Result Section */}
+                          {bb84SimulationResult && bb84SimulationResult.eavesdropping_detected && (
+                            <div className="mt-4 border border-rose-200 bg-rose-50 rounded-xl p-3 text-left animate-zoomIn">
+                              <h4 className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wider mb-2">Security Status</h4>
+                              <div className="flex items-center gap-2 mb-1 text-rose-700">
+                                <ShieldAlert className="h-4 w-4" />
+                                <span className="font-bold text-xs uppercase tracking-tight">⚠ Eavesdropping Detected</span>
+                              </div>
+                              <p className="text-[10px] text-rose-600/80 font-medium">Session automatically recovered through QuantumShield.</p>
+                            </div>
+                          )}
+
                           <button
                             onClick={() => {
                               resetTransferState();
@@ -1023,6 +1052,76 @@ function AppContent() {
             </div>
             <div className="flex-1 overflow-hidden">
               <PacketInspector />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global BB84 Terminal Modal */}
+      <EveTerminalModal 
+        isOpen={isBb84ModalOpen}
+        onClose={() => setIsBb84ModalOpen(false)}
+        eveEnabled={isEavesdropping}
+        qubits={128}
+      />
+
+      {/* Global Security Alert Toast */}
+      {showToast && bb84SimulationResult && (
+        <div className="fixed top-6 right-6 z-[60] w-96 max-w-[calc(100vw-3rem)] bg-rose-950 border border-rose-600 rounded-xl shadow-2xl shadow-rose-900/50 overflow-hidden font-sans animate-in slide-in-from-top-5 fade-in duration-300">
+          <div className="bg-rose-900/80 px-4 py-3 flex items-center justify-between border-b border-rose-800">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-white animate-pulse" />
+              <h3 className="text-white font-extrabold text-sm tracking-wider">
+                SECURITY ALERT
+              </h3>
+            </div>
+            <button 
+              onClick={() => setShowToast(false)}
+              className="text-rose-300 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          
+          <div className="p-4 space-y-3">
+            <h4 className="text-rose-100 font-bold text-base leading-tight">
+              ⚠ EAVESDROPPING DETECTED
+            </h4>
+            <p className="text-rose-200/90 text-xs">
+              Potential interception detected on the BB84 quantum channel.
+            </p>
+            
+            <div className="bg-rose-950/50 rounded-lg p-3 border border-rose-800/50 space-y-1.5 text-xs text-rose-100 font-mono">
+              <div className="flex justify-between">
+                <span className="text-rose-400/80">Transaction:</span>
+                <span className="font-semibold">TX{bb84SimulationResult.simulation_id?.substring(0, 5).toUpperCase() || '10245'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-rose-400/80">QBER:</span>
+                <span className="font-semibold">{bb84SimulationResult.qber.toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-rose-400/80">Threshold:</span>
+                <span className="font-semibold">{(bb84SimulationResult.threshold * 100).toFixed(0)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-rose-400/80">Detection time:</span>
+                <span className="font-semibold">{new Date().toLocaleTimeString()}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-rose-800/50 space-y-1.5">
+              <span className="text-rose-300 font-semibold text-[10px] uppercase tracking-wider block mb-1">
+                Security response:
+              </span>
+              <div className="flex items-center gap-2 text-rose-100 text-xs">
+                <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                <span>Compromised session identified</span>
+              </div>
+              <div className="flex items-center gap-2 text-rose-100 text-xs">
+                <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                <span>Security alert generated</span>
+              </div>
             </div>
           </div>
         </div>

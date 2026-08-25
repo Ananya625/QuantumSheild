@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTransaction } from '../context/TransactionContext';
 import { 
-  ChevronDown, ChevronUp, Terminal, ShieldCheck, Cpu, Key, FileLock2, Lock, AlertTriangle
+  ChevronDown, ChevronUp, Terminal, ShieldCheck, Cpu, Key, FileLock2, Lock, AlertTriangle, ShieldAlert
 } from 'lucide-react';
 import LiveTimeline from './LiveTimeline';
 
@@ -64,7 +64,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({
 };
 
 export const SecurityInspector: React.FC = () => {
-  const { pipelineStatus, crypto, activeSimulation } = useTransaction();
+  const { pipelineStatus, crypto, activeSimulation, bb84SimulationResult } = useTransaction();
   
   const simStatus = activeSimulation.status;
   const isShorActive = activeSimulation.algorithm === 'shor' && ['completed', 'decrypted', 'analyzed'].includes(simStatus);
@@ -268,23 +268,15 @@ export const SecurityInspector: React.FC = () => {
               <span className="block text-[10px] text-purple-600 font-bold uppercase tracking-wider mb-2">1. BB84 Quantum Channel Sim</span>
               <div className="space-y-2.5 bg-slate-50 border border-slate-100 p-3 rounded-xl font-mono text-[10px]">
                 <div>
-                  <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Alice's Raw Qubits (256-bit)</span>
-                  <div className="text-slate-800 break-all leading-tight tracking-wider bg-white border border-slate-100 p-1.5 rounded max-h-12 overflow-y-auto">
-                    {crypto.bb84AliceBits}
+                  <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">BB84 Qubits</span>
+                  <div className="text-slate-800 font-semibold leading-tight tracking-wider bg-white border border-slate-100 p-1.5 rounded">
+                    256 qubits transmitted
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Alice's Bases</span>
-                    <div className="text-slate-700 break-all tracking-wider bg-white border border-slate-100 p-1.5 rounded max-h-12 overflow-y-auto">
-                      {crypto.bb84AliceBases}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Bob's Bases</span>
-                    <div className="text-slate-700 break-all tracking-wider bg-white border border-slate-100 p-1.5 rounded max-h-12 overflow-y-auto">
-                      {crypto.bb84BobBases}
-                    </div>
+                <div>
+                  <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Sifted Bits</span>
+                  <div className="text-slate-700 font-semibold tracking-wider bg-white border border-slate-100 p-1.5 rounded">
+                    {crypto.bb84AliceBits ? crypto.bb84AliceBits.length : 0} bits reconciled
                   </div>
                 </div>
                 <div className="flex justify-between items-center pt-1 border-t border-slate-200/50">
@@ -293,10 +285,28 @@ export const SecurityInspector: React.FC = () => {
                     {crypto.bb84Qber?.toFixed(2)}%
                   </span>
                 </div>
+                <div className="flex justify-between items-center pt-1 border-t border-slate-200/50">
+                  <span className="text-[8px] font-bold text-slate-400 uppercase">Security Threshold</span>
+                  <span className="font-extrabold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                    11.00%
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-slate-200/50">
+                  <span className="text-[8px] font-bold text-slate-400 uppercase">Eavesdropping</span>
+                  <span className={`font-extrabold px-2 py-0.5 rounded border ${bb84SimulationResult?.eavesdropping_detected ? 'text-rose-600 bg-rose-50 border-rose-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                    {bb84SimulationResult?.eavesdropping_detected ? 'DETECTED' : 'NOT DETECTED'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-slate-200/50">
+                  <span className="text-[8px] font-bold text-slate-400 uppercase">Session Status</span>
+                  <span className={`font-extrabold px-2 py-0.5 rounded border text-emerald-600 bg-emerald-50 border-emerald-100`}>
+                    {bb84SimulationResult?.eavesdropping_detected ? 'RECOVERED' : 'SECURE'}
+                  </span>
+                </div>
                 <div>
-                  <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Reconciled BB84 Shared Secret</span>
-                  <div className="text-purple-700 break-all font-extrabold select-all bg-white border border-slate-100 p-1.5 rounded mt-0.5">
-                    {crypto.bb84Secret}
+                  <span className="text-slate-400 block font-semibold text-[8px] uppercase tracking-wider">Cryptographic Material</span>
+                  <div className="text-slate-500 font-semibold bg-slate-100 border border-slate-200 p-1.5 rounded mt-0.5">
+                    Protected / not displayed
                   </div>
                 </div>
               </div>
@@ -307,21 +317,21 @@ export const SecurityInspector: React.FC = () => {
               <div className="space-y-2">
                 <div>
                   <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Client Kyber Public Key</span>
-                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2 rounded-lg max-h-16 overflow-y-auto select-all text-slate-500 break-all leading-normal">
-                    {crypto.mlkemPublicKey}
-                  </pre>
+                  <div className="text-[9px] font-semibold bg-slate-100 border border-slate-200 p-2 rounded-lg text-slate-500">
+                    Protected / not displayed
+                  </div>
                 </div>
                 <div>
                   <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Encapsulated Ciphertext (1088 bytes)</span>
-                  <pre className="font-mono text-[9px] bg-slate-50 border border-slate-100 p-2 rounded-lg max-h-16 overflow-y-auto select-all text-slate-500 break-all leading-normal">
-                    {crypto.mlkemCiphertext}
-                  </pre>
+                  <div className="text-[9px] font-semibold bg-slate-100 border border-slate-200 p-2 rounded-lg text-slate-500">
+                    Protected / not displayed
+                  </div>
                 </div>
                 <div>
                   <span className="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider">ML-KEM Shared Secret</span>
-                  <pre className="font-mono text-[9.5px] bg-indigo-50 border border-indigo-100 p-2 rounded-lg select-all text-indigo-700 font-bold break-all">
-                    {crypto.mlkemSecret}
-                  </pre>
+                  <div className="text-[9.5px] font-semibold bg-slate-100 border border-slate-200 p-2 rounded-lg text-slate-500">
+                    Protected / not displayed
+                  </div>
                 </div>
               </div>
             </div>
@@ -452,9 +462,9 @@ export const SecurityInspector: React.FC = () => {
           {crypto.sessionKey && (
             <div>
               <span className="block text-[10px] text-slate-400 mb-1 font-semibold uppercase tracking-wider">Derived Symmetric Session Key (AES-256)</span>
-              <pre className={`font-mono text-[9.5px] border p-2.5 rounded-lg select-all font-bold break-all ${isQuantum ? 'bg-purple-50 border-purple-100 text-purple-700' : 'bg-slate-50 border-slate-100 text-emerald-700'}`}>
-                {crypto.sessionKey}
-              </pre>
+              <div className="text-[9.5px] font-semibold bg-slate-100 border border-slate-200 p-2.5 rounded-lg text-slate-500">
+                Protected / not displayed
+              </div>
             </div>
           )}
         </div>
@@ -592,7 +602,65 @@ export const SecurityInspector: React.FC = () => {
           </div>
         )}
       </AccordionItem>
-      
+      {/* 7. QUANTUM SECURITY INCIDENT AUDIT */}
+      {bb84SimulationResult && bb84SimulationResult.eavesdropping_detected && (
+        <AccordionItem
+          title="Quantum Security Incident"
+          isOpen={activeSection === 'incident'}
+          onToggle={() => handleToggle('incident')}
+          status="failed"
+          statusLabel="Threat Mitigated"
+          icon={<ShieldAlert className="h-4.5 w-4.5 text-rose-500" />}
+        >
+          <div className="space-y-2 bg-rose-50 border border-rose-100 p-4 rounded-xl text-rose-900 text-[10px]">
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Transaction</span>
+              <span className="font-mono font-bold">TX{bb84SimulationResult.simulation_id?.substring(0, 5).toUpperCase()}</span>
+            </div>
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Detection Layer</span>
+              <span className="font-bold">BB84 QKD</span>
+            </div>
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Detection Metric</span>
+              <span className="font-bold">QBER</span>
+            </div>
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Observed QBER</span>
+              <span className="font-bold font-mono">{bb84SimulationResult.qber.toFixed(2)}%</span>
+            </div>
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Security Threshold</span>
+              <span className="font-bold font-mono">{(bb84SimulationResult.threshold * 100).toFixed(2)}%</span>
+            </div>
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Classification</span>
+              <span className="font-bold text-rose-600">Potential Eavesdropping</span>
+            </div>
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Initial Session</span>
+              <span className="font-bold text-rose-600">COMPROMISED</span>
+            </div>
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Recovery</span>
+              <span className="font-bold text-emerald-600">SUCCESSFUL</span>
+            </div>
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Transaction Impact</span>
+              <span className="font-bold text-emerald-600">NONE</span>
+            </div>
+            <div className="flex justify-between border-b border-rose-200/60 pb-1">
+              <span className="text-rose-500 font-bold uppercase">Final Transaction Status</span>
+              <span className="font-bold text-emerald-600">SETTLED</span>
+            </div>
+            <div className="flex justify-between pt-1">
+              <span className="text-rose-500 font-bold uppercase">Timestamp</span>
+              <span className="font-mono font-bold">{new Date().toLocaleTimeString()}</span>
+            </div>
+          </div>
+        </AccordionItem>
+      )}
+
       {/* Integrated Security & Operational Audit Log */}
       <div className="border-t border-slate-200 mt-6 pt-4 h-[240px] flex flex-col shrink-0">
         <LiveTimeline />

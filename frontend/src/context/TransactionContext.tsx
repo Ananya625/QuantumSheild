@@ -120,6 +120,8 @@ interface TransactionContextType {
   // Security Mode Switch
   securityMode: 'classical' | 'quantumshield';
   setSecurityMode: (mode: 'classical' | 'quantumshield') => void;
+  isEavesdropping: boolean;
+  setIsEavesdropping: (val: boolean) => void;
   
   // Actions
   loginA: (username: string) => Promise<boolean>;
@@ -139,6 +141,12 @@ interface TransactionContextType {
   decryptCapturedTransaction: () => void;
   analyzeSecurityImpact: () => void;
   resetSimulationState: () => void;
+  
+  // BB84 Orchestration
+  isBb84ModalOpen: boolean;
+  setIsBb84ModalOpen: (val: boolean) => void;
+  bb84SimulationResult: any | null;
+  setBb84SimulationResult: (val: any | null) => void;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
@@ -168,10 +176,9 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [crypto, setCrypto] = useState<CryptoState>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [ws, setWs] = useState<WebSocket | null>(null);
-
-  // Security mode: 'classical' or 'quantumshield'
   const [securityMode, setSecurityMode] = useState<'classical' | 'quantumshield'>('quantumshield');
+  const [isEavesdropping, setIsEavesdropping] = useState<boolean>(false);
+  const [ws, setWs] = useState<WebSocket | null>(null);
 
   // Quantum Simulation implementation
   const [activeSimulation, setActiveSimulation] = useState<QuantumSimulationState>({
@@ -183,6 +190,10 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     metadata: null,
     key_recovery: null
   });
+
+  // BB84 Orchestration State
+  const [isBb84ModalOpen, setIsBb84ModalOpen] = useState(false);
+  const [bb84SimulationResult, setBb84SimulationResult] = useState<any | null>(null);
 
   const simulationTimeoutsRef = React.useRef<any[]>([]);
 
@@ -335,18 +346,31 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
     
     resetTransferState();
     
+    if (securityMode === 'quantumshield' && isEavesdropping) {
+      setBb84SimulationResult(null);
+      setIsBb84ModalOpen(true);
+      // Do not defer. Execute immediately.
+      await executeTransfer(amount, description);
+      return;
+    }
+    
+    await executeTransfer(amount, description);
+  };
+
+  const executeTransfer = async (amount: number, description: string) => {
     // Switch only sender to processing. Bob remains on dashboard
     setScreenA('PROCESSING');
     setPipelineStatus('PENDING');
     
     try {
       const payload: TransferPayload = {
-        session_id: sessionIdA,
-        sender_account: accountNumberA,
+        session_id: sessionIdA!,
+        sender_account: accountNumberA!,
         receiver_account: '987654321', // Bob's HDFC account
         amount,
         description,
-        security_mode: securityMode
+        security_mode: securityMode,
+        eavesdrop: isEavesdropping
       };
       
       const res = await api.transfer(payload);
@@ -354,7 +378,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setActiveTxId(txId);
       
       // Connect to WebSocket gateway
-      const socket = new WebSocket(`ws://localhost:8000/ws/transaction/${sessionIdA}`);
+      const socket = new WebSocket(`ws://127.0.0.1:8000/ws/transaction/${sessionIdA}`);
       setWs(socket);
       
       socket.onmessage = async (event) => {
@@ -439,6 +463,16 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
               ...prev,
               plaintext: payload.data.plaintext
             }));
+          } else if (payload.event === 'EAVESDROP_DETECTED') {
+            setPipelineStatus('KEY_EXCHANGE');
+            setBb84SimulationResult({
+              eavesdropping_detected: true,
+              simulation_id: String(txId),
+              qber: payload.data.qber_percent,
+              threshold: payload.data.threshold
+            });
+          } else if (payload.event === 'SESSION_RECOVERED') {
+            setPipelineStatus('KEY_EXCHANGE');
           } else if (payload.event === 'DECRYPTION_STARTED') {
             setPipelineStatus('DECRYPTING');
           } else if (payload.event === 'SETTLEMENT_STARTED') {
@@ -669,22 +703,30 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
         
         securityMode,
         setSecurityMode,
+        isEavesdropping,
+        setIsEavesdropping,
         
         loginA,
         logoutA,
         loginB,
         logoutB,
+        registerUser,
         quickDemoLogin,
         initiateTransfer,
         fetchAccountDataA,
         fetchAccountDataB,
         resetTransferState,
+        
         activeSimulation,
         runQuantumSimulation,
         decryptCapturedTransaction,
         analyzeSecurityImpact,
         resetSimulationState,
-        registerUser,
+        
+        isBb84ModalOpen,
+        setIsBb84ModalOpen,
+        bb84SimulationResult,
+        setBb84SimulationResult
       }}
     >
       {children}

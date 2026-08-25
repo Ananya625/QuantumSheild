@@ -4,10 +4,11 @@ from cryptography.hazmat.primitives.asymmetric import mlkem, mldsa
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import PublicFormat, Encoding
+from app.quantum.eavesdrop_service import EavesdropService
 
 class PqcService:
     @staticmethod
-    def simulate_bb84(num_bits: int = 256, noise_rate: float = 0.02) -> dict:
+    def simulate_bb84(num_bits: int = 256, noise_rate: float = 0.02, eavesdrop: bool = False) -> dict:
         """
         Simulates the BB84 QKD protocol between Alice and Bob:
         1. Alice generates random bits and random bases (+ or x).
@@ -26,12 +27,18 @@ class PqcService:
         # Bob's bases
         bob_bases = [random.choice(['+', 'x']) for _ in range(num_bits)]
         
+        # If eavesdropping is enabled, Eve intercepts the qubits before Bob
+        if eavesdrop:
+            transmitted_bits = EavesdropService.intercept_qubits(alice_bits, alice_bases, num_bits)
+        else:
+            transmitted_bits = alice_bits
+            
         # Bob measures Alice's bits
         bob_measured = []
         for i in range(num_bits):
             if alice_bases[i] == bob_bases[i]:
                 # Correct basis: Bob gets Alice's bit, but noise might flip it
-                bit = alice_bits[i]
+                bit = transmitted_bits[i]
                 if random.random() < noise_rate:
                     bit = 1 - bit # Flip bit due to channel noise
                 bob_measured.append(bit)

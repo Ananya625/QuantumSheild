@@ -69,3 +69,5 @@ class TransferRequest(BaseModel):
     amount: float
     description: str
     security_mode: str = "classical"
+    eavesdrop: bool = False
+

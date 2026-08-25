@@ -9,7 +9,7 @@ from .services.tls_service import TlsService
 from .services.pqc_service import PqcService
 from .websocket import manager
 
-async def run_transaction_pipeline(transaction_id: int):
+async def run_transaction_pipeline(transaction_id: int, eavesdrop: bool = False):
     """
     Asynchronously runs the entire bank security transaction pipeline in the background.
     Executes actual cryptographic operations and DB commits step-by-step, streaming
@@ -128,8 +128,144 @@ async def run_transaction_pipeline(transaction_id: int):
                 sleep_time=0.6
             )
             
-            # Run BB84 qubit reconciliation
-            bb84_res = PqcService.simulate_bb84(num_bits=256, noise_rate=0.015)
+            # Run BB84 qubit reconciliation via detailed stages
+            async def execute_bb84_stage(is_eavesdropping: bool, is_recovery: bool = False):
+                num_bits = 256
+                await update_status(
+                    status_name="KEY_EXCHANGE",
+                    message="Alice preparing BB84 quantum states",
+                    event_type="BB84_PREPARING",
+                    data={"num_qubits": num_bits},
+                    sleep_time=0.4
+                )
+                
+                await update_status(
+                    status_name="KEY_EXCHANGE",
+                    message="Quantum states transmitted through BB84 channel",
+                    event_type="BB84_TRANSMITTING",
+                    data={"num_qubits": num_bits},
+                    sleep_time=0.4
+                )
+                
+                if is_eavesdropping:
+                    await update_status(
+                        status_name="KEY_EXCHANGE",
+                        message="Eve intercepting quantum channel",
+                        event_type="EVE_INTERCEPTION",
+                        data={"intercepted_qubits": num_bits, "interception_enabled": True},
+                        sleep_time=0.4
+                    )
+                    
+                await update_status(
+                    status_name="KEY_EXCHANGE",
+                    message="Bob measuring received quantum states",
+                    event_type="BB84_MEASUREMENT",
+                    data={"num_qubits": num_bits},
+                    sleep_time=0.4
+                )
+                
+                res = PqcService.simulate_bb84(num_bits=num_bits, noise_rate=0.015, eavesdrop=is_eavesdropping)
+                sifted_bits = len(res["matching_indices"].split(",")) if res["matching_indices"] else 0
+                
+                await update_status(
+                    status_name="KEY_EXCHANGE",
+                    message="Alice and Bob performing basis reconciliation",
+                    event_type="BB84_SIFTING",
+                    data={"total_qubits": num_bits, "sifted_bits": sifted_bits},
+                    sleep_time=0.4
+                )
+                
+                await update_status(
+                    status_name="KEY_EXCHANGE",
+                    message="Testing sample bits for quantum bit error rate",
+                    event_type="BB84_QBER_TEST",
+                    data={"sample_bits": sifted_bits},
+                    sleep_time=0.4
+                )
+                
+                qber_percent = res["qber"]
+                QBER_THRESHOLD = 0.11
+                QBER_THRESHOLD_PERCENT = 11.0
+                
+                await update_status(
+                    status_name="KEY_EXCHANGE",
+                    message="Quantum Bit Error Rate calculated",
+                    event_type="BB84_QBER_RESULT",
+                    data={
+                        "qber": qber_percent / 100.0,
+                        "qber_percent": qber_percent,
+                        "threshold": QBER_THRESHOLD,
+                        "threshold_percent": QBER_THRESHOLD_PERCENT
+                    },
+                    sleep_time=0.4
+                )
+                
+                if qber_percent > QBER_THRESHOLD_PERCENT:
+                    await update_status(
+                        status_name="SECURITY_ALERT",
+                        message="QBER threshold exceeded. Anomaly detected.",
+                        event_type="EAVESDROP_DETECTED",
+                        data={
+                            "qber": qber_percent / 100.0,
+                            "qber_percent": qber_percent,
+                            "threshold": QBER_THRESHOLD,
+                            "threshold_percent": QBER_THRESHOLD_PERCENT
+                        },
+                        sleep_time=0.4
+                    )
+                    
+                    await update_status(
+                        status_name="SECURITY_AUDIT",
+                        message="Security incident logged. Transaction continuing via safe recovery path.",
+                        event_type="QUANTUM_SECURITY_INCIDENT",
+                        data={
+                            "detection_layer": "BB84",
+                            "detection_metric": "QBER",
+                            "observed_qber": qber_percent / 100.0,
+                            "threshold": QBER_THRESHOLD,
+                            "classification": "POTENTIAL_EAVESDROPPING",
+                            "session_status": "COMPROMISED",
+                            "recovery": "INITIATED",
+                            "transaction_impact": "NONE"
+                        },
+                        sleep_time=0.8
+                    )
+                    
+                    await update_status(
+                        status_name="KEY_EXCHANGE",
+                        message="Discarding compromised session and establishing fresh secure recovery",
+                        event_type="SESSION_RECOVERY_STARTED",
+                        data={},
+                        sleep_time=0.5
+                    )
+                    
+                    # Recovery recursion
+                    return await execute_bb84_stage(is_eavesdropping=False, is_recovery=True)
+                else:
+                    await update_status(
+                        status_name="KEY_EXCHANGE",
+                        message="BB84 channel verified secure",
+                        event_type="BB84_CHANNEL_SECURE",
+                        data={
+                            "qber": qber_percent / 100.0,
+                            "threshold": QBER_THRESHOLD
+                        },
+                        sleep_time=0.5
+                    )
+                    
+                    if is_recovery:
+                        await update_status(
+                            status_name="KEY_EXCHANGE",
+                            message="Fresh quantum-safe session established",
+                            event_type="SESSION_RECOVERED",
+                            data={},
+                            sleep_time=0.5
+                        )
+                    
+                    return res
+
+            bb84_res = await execute_bb84_stage(eavesdrop)
+
             tx.bb84_alice_bits = bb84_res["alice_bits"]
             tx.bb84_alice_bases = bb84_res["alice_bases"]
             tx.bb84_bob_bases = bb84_res["bob_bases"]

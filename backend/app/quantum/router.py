@@ -67,3 +67,41 @@ def run_quantum_threat_demonstration(payload: Optional[DemonstrateRequest] = Non
     if not result.get("success", False):
         raise HTTPException(status_code=400, detail=result.get("error", "Demonstration failed."))
     return result
+
+import uuid
+from ..services.pqc_service import PqcService
+
+class Bb84SimulateRequest(BaseModel):
+    eve_enabled: bool = False
+    qubits: int = 128
+
+@router.post("/threat/bb84/simulate")
+def simulate_bb84_endpoint(payload: Bb84SimulateRequest):
+    if payload.qubits < 1 or payload.qubits > 8192:
+        raise HTTPException(status_code=400, detail="Invalid qubit count.")
+        
+    try:
+        res = PqcService.simulate_bb84(num_bits=payload.qubits, noise_rate=0.015, eavesdrop=payload.eve_enabled)
+        qber_percent = res["qber"]
+        
+        matching_indices_str = res.get("matching_indices", "")
+        tested_bits = len(matching_indices_str.split(",")) if matching_indices_str else 0
+        errors = int(tested_bits * (qber_percent / 100.0))
+        intercepted_qubits = payload.qubits if payload.eve_enabled else 0
+        
+        eavesdropping_detected = qber_percent > 11.0
+        
+        return {
+            "simulation_id": str(uuid.uuid4()),
+            "eve_enabled": payload.eve_enabled,
+            "total_qubits": payload.qubits,
+            "intercepted_qubits": intercepted_qubits,
+            "tested_bits": tested_bits,
+            "errors": errors,
+            "qber": qber_percent,
+            "threshold": 0.11,
+            "eavesdropping_detected": eavesdropping_detected,
+            "key_compromised": eavesdropping_detected
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Simulation failed: {str(e)}")

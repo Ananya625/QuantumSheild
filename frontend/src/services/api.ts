@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -16,6 +16,7 @@ export interface TransferPayload {
   amount: number;
   description: string;
   security_mode: 'classical' | 'quantumshield';
+  eavesdrop?: boolean;
 }
 
 export interface ToyCurveInfo {
@@ -118,4 +119,8 @@ export const api = {
 
   runQuantumThreatDemonstration: (txId?: number) =>
     apiClient.post<ToyQuantumThreatDemoResponse>('/api/quantum/demonstrate', { tx_id: txId }),
+
+  simulateBb84: (data: { eve_enabled: boolean; qubits: number }) =>
+    apiClient.post('/api/quantum/threat/bb84/simulate', data),
 };
+

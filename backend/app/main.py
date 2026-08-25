@@ -240,7 +240,7 @@ def initiate_transfer(payload: TransferRequest, background_tasks: BackgroundTask
     db.refresh(tx)
     
     # Enqueue background pipeline task
-    background_tasks.add_task(run_transaction_pipeline, tx.id)
+    background_tasks.add_task(run_transaction_pipeline, tx.id, payload.eavesdrop)
     
     return {"transaction_id": tx.id}
 

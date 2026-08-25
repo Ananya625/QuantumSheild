@@ -3,7 +3,7 @@ import { useTransaction } from '../context/TransactionContext';
 import { Send, ShieldCheck } from 'lucide-react';
 
 export const TransferForm: React.FC = () => {
-  const { setScreenA: setScreen, initiateTransfer, balanceA: balance } = useTransaction();
+  const { setScreenA: setScreen, initiateTransfer, balanceA: balance, securityMode, isEavesdropping, setIsEavesdropping } = useTransaction();
   
   // Beneficiary details
   const [beneficiary, setBeneficiary] = useState('987654321');
@@ -109,6 +109,29 @@ export const TransferForm: React.FC = () => {
               <p className="text-[9px] text-slate-400 mt-1 font-medium">Demo passcode: `password123`</p>
             </div>
           </div>
+
+          {/* Eavesdropping Toggle (Only in QuantumShield mode) */}
+          {securityMode === 'quantumshield' && (
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <label className="text-xs font-semibold text-rose-500 uppercase tracking-wider md:w-1/3">Simulate Eavesdrop</label>
+              <div className="md:w-2/3">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={isEavesdropping}
+                      onChange={(e) => setIsEavesdropping(e.target.checked)}
+                    />
+                    <div className={`block w-10 h-6 rounded-full transition-colors ${isEavesdropping ? 'bg-rose-500' : 'bg-slate-200'}`}></div>
+                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isEavesdropping ? 'transform translate-x-4' : ''}`}></div>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-600">Eve intercepts BB84 qubits</span>
+                </label>
+                <p className="text-[9px] text-slate-400 mt-1 font-medium">Demonstrates QKD security by inflating QBER &gt; 11%</p>
+              </div>
+            </div>
+          )}
 
           {/* Authorization Checkbox */}
           <label className="flex items-start space-x-3 pt-2 text-xs text-slate-600 font-semibold cursor-pointer">

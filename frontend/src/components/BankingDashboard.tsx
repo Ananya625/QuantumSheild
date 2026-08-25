@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useTransaction } from '../context/TransactionContext';
 import { ArrowRightLeft, CreditCard, Clock, TrendingDown, TrendingUp, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { BB84Simulator } from './BB84Simulator';
 
 interface BankingDashboardProps {
   party: 'A' | 'B';
@@ -148,7 +149,11 @@ export const BankingDashboard: React.FC<BankingDashboardProps> = ({ party }) => 
         </div>
       </div>
 
+      {/* Standalone BB84 Eavesdropping Simulator */}
+      {isA && <BB84Simulator />}
+      
     </div>
   );
 };
+
 export default BankingDashboard;

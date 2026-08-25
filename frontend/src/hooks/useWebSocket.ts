@@ -18,7 +18,7 @@ export function useWebSocket(sessionId: string | null) {
     }
     
     // In dev environment, websocket targets port 8000
-    const ws = new WebSocket(`ws://localhost:8000/ws/${id}`);
+    const ws = new WebSocket(`ws://127.0.0.1:8000/ws/transaction/${id}`);
     socketRef.current = ws;
 
     ws.onopen = () => {
