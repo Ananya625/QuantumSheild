@@ -24,7 +24,7 @@ function AppContent() {
     pipelineStatus,
     isBb84ModalOpen, setIsBb84ModalOpen,
     isEavesdropping,
-    bb84SimulationResult, setBb84SimulationResult
+    bb84SimulationResult
   } = useTransaction();
 
   const [showToast, setShowToast] = useState(false);
