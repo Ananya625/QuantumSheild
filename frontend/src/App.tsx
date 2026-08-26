@@ -6,15 +6,18 @@ import { SecurityInspector } from './components/SecurityInspector';
 import { PacketInspector } from './components/PacketInspector';
 import { QuantumThreatDemoModal } from './components/QuantumThreatDemoModal';
 import { EveTerminalModal } from './components/EveTerminalModal';
+import { CbomModal } from './components/CbomModal';
+import { BB84Simulator } from './components/BB84Simulator';
 import { 
   LayoutDashboard, ArrowRightLeft, Shield, LogOut, Keyboard,
-  Lock, Eye, EyeOff, FileSearch, ShieldCheck, CheckCircle2, Activity, ShieldAlert, X, Check
+  Lock, Eye, EyeOff, FileSearch, ShieldCheck, CheckCircle2, Activity, ShieldAlert, X, Check, Zap
 } from 'lucide-react';
 
 function AppContent() {
   const { 
     screenA, setScreenA, screenB, setScreenB,
     loginA, loginB, quickDemoLogin,
+    logoutA, logoutB,
     sessionIdA, sessionIdB,
     accountNumberA,
     logs,
@@ -24,7 +27,9 @@ function AppContent() {
     pipelineStatus,
     isBb84ModalOpen, setIsBb84ModalOpen,
     isEavesdropping,
-    bb84SimulationResult
+    bb84SimulationResult,
+    securityMode,
+    setSecurityMode
   } = useTransaction();
 
   const [showToast, setShowToast] = useState(false);
@@ -89,6 +94,8 @@ function AppContent() {
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [isPacketOpen, setIsPacketOpen] = useState(false);
   const [isQuantumDemoOpen, setIsQuantumDemoOpen] = useState(false);
+  const [isCbomOpen, setIsCbomOpen] = useState(false);
+  const [isBb84SimOpen, setIsBb84SimOpen] = useState(false);
 
   // High-precision stopwatch for WebSocket pipeline progress
   const [elapsedTimeSec, setElapsedTimeSec] = useState<number>(0);
@@ -171,12 +178,12 @@ function AppContent() {
 
   const handleLogoutA = () => {
     resetTransferState();
-    useTransaction().logoutA();
+    logoutA();
   };
 
   const handleLogoutB = () => {
     resetTransferState();
-    useTransaction().logoutB();
+    logoutB();
   };
 
   const showQuickLogin = !sessionIdA || !sessionIdB;
@@ -232,7 +239,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans select-none w-full overflow-hidden">
+    <div className="h-screen bg-slate-100 flex flex-col font-sans select-none w-full overflow-hidden">
       
       {/* Slim Global Status/Config Strip */}
       <header className="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between shadow-sm shrink-0">
@@ -246,13 +253,31 @@ function AppContent() {
         </div>
         
         <div className="flex items-center space-x-4">
-          <button
-            onClick={() => setIsQuantumDemoOpen(true)}
-            className="border border-purple-300 hover:bg-purple-50 text-purple-700 px-3 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition duration-200 cursor-pointer flex items-center gap-1 shadow-sm font-sans"
-          >
-            <Activity className="h-3 w-3 text-purple-600 animate-pulse" />
-            ⚛ Run Quantum Threat Analysis
-          </button>
+          {/* Security Mode Selector Toggle Switch */}
+          {!showQuickLogin && (
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/60 select-none">
+              <button
+                onClick={() => setSecurityMode('classical')}
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  securityMode === 'classical'
+                    ? 'bg-white text-amber-700 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-650'
+                }`}
+              >
+                Traditional Banking
+              </button>
+              <button
+                onClick={() => setSecurityMode('quantumshield')}
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  securityMode === 'quantumshield'
+                    ? 'bg-[#98144D] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-650'
+                }`}
+              >
+                QuantumShield Mode
+              </button>
+            </div>
+          )}
 
           {showQuickLogin ? (
             <button
@@ -565,6 +590,36 @@ function AppContent() {
                         <Eye className="h-4 w-4 shrink-0" />
                         <span className="hidden md:inline">Audit Records</span>
                       </button>
+                      <button
+                        onClick={() => setIsPacketOpen(true)}
+                        disabled={!crypto.packetData}
+                        className="px-3 py-2.5 flex items-center space-x-2 text-left text-xs font-bold transition-all border-l-4 border-transparent text-slate-450 hover:text-slate-700 hover:bg-slate-100/50 font-semibold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <FileSearch className="h-4 w-4 shrink-0 text-slate-500" />
+                        <span className="hidden md:inline">Inspect Packet</span>
+                      </button>
+                      <button
+                        onClick={() => setIsCbomOpen(true)}
+                        disabled={pipelineStatus !== 'COMPLETED'}
+                        className="px-3 py-2.5 flex items-center space-x-2 text-left text-xs font-bold transition-all border-l-4 border-transparent text-slate-450 hover:text-slate-700 hover:bg-slate-100/50 font-semibold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Shield className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <span className="hidden md:inline">Generate CBOM</span>
+                      </button>
+                      <button
+                        onClick={() => setIsQuantumDemoOpen(true)}
+                        className="px-3 py-2.5 flex items-center space-x-2 text-left text-xs font-bold transition-all border-l-4 border-transparent text-slate-450 hover:text-slate-700 hover:bg-slate-100/50 font-semibold cursor-pointer"
+                      >
+                        <Activity className="h-4 w-4 shrink-0 text-purple-600 animate-pulse" />
+                        <span className="hidden md:inline">Threat Analysis</span>
+                      </button>
+                      <button
+                        onClick={() => setIsBb84SimOpen(true)}
+                        className="px-3 py-2.5 flex items-center space-x-2 text-left text-xs font-bold transition-all border-l-4 border-transparent text-slate-450 hover:text-slate-700 hover:bg-slate-100/50 font-semibold cursor-pointer"
+                      >
+                        <Zap className="h-4 w-4 shrink-0 text-[#98144D]" />
+                        <span className="hidden md:inline">QKD Simulator</span>
+                      </button>
                     </nav>
                   </div>
 
@@ -675,21 +730,6 @@ function AppContent() {
                             )}
                           </div>
 
-                          <div className="flex items-center justify-center space-x-3 select-none">
-                            <button
-                              onClick={() => setIsInspectorOpen(true)}
-                              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-xl font-bold text-[10px] shadow-sm flex items-center gap-1 transition active:scale-95 duration-200 cursor-pointer"
-                            >
-                              <Eye className="h-3.5 w-3.5" /> Audit Cryptography
-                            </button>
-                            <button
-                              onClick={() => setIsPacketOpen(true)}
-                              disabled={!crypto.packetData}
-                              className="bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-600 px-3 py-1.5 rounded-xl font-bold text-[10px] shadow-sm flex items-center gap-1 transition active:scale-95 duration-200 cursor-pointer"
-                            >
-                              <FileSearch className="h-3.5 w-3.5" /> Inspect Packet
-                            </button>
-                          </div>
 
                           {/* Security Simulation Result Section */}
                           {bb84SimulationResult && bb84SimulationResult.eavesdropping_detected && (
@@ -962,10 +1002,33 @@ function AppContent() {
                       </button>
                       <button
                         onClick={() => setIsInspectorOpen(true)}
-                        className="px-3 py-2.5 flex items-center space-x-2 text-left text-xs font-bold transition-all border-l-4 border-transparent text-slate-455 hover:text-slate-700 hover:bg-slate-100/50 font-semibold cursor-pointer"
+                        className="px-3 py-2.5 flex items-center space-x-2 text-left text-xs font-bold transition-all border-l-4 border-transparent text-slate-450 hover:text-slate-700 hover:bg-slate-100/50 font-semibold cursor-pointer"
                       >
                         <Eye className="h-4 w-4 shrink-0" />
                         <span className="hidden md:inline">Audit Records</span>
+                      </button>
+                      <button
+                        onClick={() => setIsPacketOpen(true)}
+                        disabled={!crypto.packetData}
+                        className="px-3 py-2.5 flex items-center space-x-2 text-left text-xs font-bold transition-all border-l-4 border-transparent text-slate-455 hover:text-slate-700 hover:bg-slate-100/50 font-semibold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <FileSearch className="h-4 w-4 shrink-0 text-slate-500" />
+                        <span className="hidden md:inline">Inspect Packet</span>
+                      </button>
+                      <button
+                        onClick={() => setIsCbomOpen(true)}
+                        disabled={pipelineStatus !== 'COMPLETED'}
+                        className="px-3 py-2.5 flex items-center space-x-2 text-left text-xs font-bold transition-all border-l-4 border-transparent text-slate-455 hover:text-slate-700 hover:bg-slate-100/50 font-semibold cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Shield className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <span className="hidden md:inline">Generate CBOM</span>
+                      </button>
+                      <button
+                        onClick={() => setIsQuantumDemoOpen(true)}
+                        className="px-3 py-2.5 flex items-center space-x-2 text-left text-xs font-bold transition-all border-l-4 border-transparent text-slate-455 hover:text-slate-700 hover:bg-slate-100/50 font-semibold cursor-pointer"
+                      >
+                        <Activity className="h-4 w-4 shrink-0 text-purple-600 animate-pulse" />
+                        <span className="hidden md:inline">Threat Analysis</span>
                       </button>
                     </nav>
                   </div>
@@ -1024,9 +1087,9 @@ function AppContent() {
                 Close Audit
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50">
-              <SecurityInspector />
-            </div>
+             <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50">
+               <SecurityInspector onOpenCbom={() => setIsCbomOpen(true)} />
+             </div>
           </div>
         </div>
       )}
@@ -1035,6 +1098,18 @@ function AppContent() {
       <QuantumThreatDemoModal
         isOpen={isQuantumDemoOpen}
         onClose={() => setIsQuantumDemoOpen(false)}
+      />
+
+      {/* CBOM Modal */}
+      <CbomModal
+        isOpen={isCbomOpen}
+        onClose={() => setIsCbomOpen(false)}
+      />
+
+      {/* Isolated QKD Simulator Modal */}
+      <BB84Simulator
+        isOpen={isBb84SimOpen}
+        onClose={() => setIsBb84SimOpen(false)}
       />
 
       {/* Wireshark Packet Inspector Modal */}

@@ -43,6 +43,7 @@ export interface CryptoState {
   mlkemSecret?: string;
   mldsaPublicKey?: string;
   mldsaSignature?: string;
+  timestamp?: string;
 }
 
 export interface QuantumSimulationState {
@@ -522,7 +523,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 mlkemCiphertext: details.data.mlkem?.ciphertext,
                 mlkemSecret: details.data.mlkem?.secret,
                 mldsaPublicKey: details.data.mldsa?.public_key,
-                mldsaSignature: details.data.mldsa?.signature
+                mldsaSignature: details.data.mldsa?.signature,
+                timestamp: details.data.created_at
               }));
             } catch (err) {
               console.error("Error fetching final transaction parameters:", err);
@@ -553,7 +555,8 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 mlkemCiphertext: details.data.mlkem?.ciphertext,
                 mlkemSecret: details.data.mlkem?.secret,
                 mldsaPublicKey: details.data.mldsa?.public_key,
-                mldsaSignature: details.data.mldsa?.signature
+                mldsaSignature: details.data.mldsa?.signature,
+                timestamp: details.data.created_at
               }));
             } catch (err) {
               console.error("Error fetching failed transaction parameters:", err);

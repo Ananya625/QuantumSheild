@@ -63,7 +63,11 @@ const AccordionItem: React.FC<AccordionItemProps> = ({
   );
 };
 
-export const SecurityInspector: React.FC = () => {
+interface SecurityInspectorProps {
+  onOpenCbom?: () => void;
+}
+
+export const SecurityInspector: React.FC<SecurityInspectorProps> = ({ onOpenCbom }) => {
   const { pipelineStatus, crypto, activeSimulation, bb84SimulationResult } = useTransaction();
   
   const simStatus = activeSimulation.status;
@@ -181,6 +185,22 @@ export const SecurityInspector: React.FC = () => {
 
   return (
     <div className="px-6 py-4 space-y-2">
+      {/* Generate CBOM Promo/CTA Banner */}
+      {pipelineStatus === 'COMPLETED' && onOpenCbom && (
+        <div className="mb-4 bg-gradient-to-br from-[#98144D] to-[#700d36] rounded-2xl p-4 text-white shadow-md flex justify-between items-center select-none animate-fadeIn border border-white/10">
+          <div>
+            <h4 className="font-extrabold text-[11px] uppercase tracking-wider">Cryptographic BOM Ready</h4>
+            <p className="text-[9px] text-pink-100 font-semibold mt-0.5">Generate a digital receipt for this transaction.</p>
+          </div>
+          <button
+            onClick={onOpenCbom}
+            className="bg-white hover:bg-slate-50 text-[#98144D] px-3.5 py-1.5 rounded-xl font-extrabold text-[9px] uppercase tracking-wider shadow transition active:scale-95 duration-200 cursor-pointer"
+          >
+            Generate CBOM
+          </button>
+        </div>
+      )}
+
       {/* 1. APPLICATION LAYER */}
       <AccordionItem
         title="Application Layer"
