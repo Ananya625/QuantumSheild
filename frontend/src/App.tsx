@@ -254,30 +254,28 @@ function AppContent() {
         
         <div className="flex items-center space-x-4">
           {/* Security Mode Selector Toggle Switch */}
-          {!showQuickLogin && (
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/60 select-none">
-              <button
-                onClick={() => setSecurityMode('classical')}
-                className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  securityMode === 'classical'
-                    ? 'bg-white text-amber-700 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-650'
-                }`}
-              >
-                Traditional Banking
-              </button>
-              <button
-                onClick={() => setSecurityMode('quantumshield')}
-                className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  securityMode === 'quantumshield'
-                    ? 'bg-[#98144D] text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-650'
-                }`}
-              >
-                QuantumShield Mode
-              </button>
-            </div>
-          )}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/60 select-none">
+            <button
+              onClick={() => setSecurityMode('classical')}
+              className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                securityMode === 'classical'
+                  ? 'bg-white text-amber-700 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-650'
+              }`}
+            >
+              Traditional Banking
+            </button>
+            <button
+              onClick={() => setSecurityMode('quantumshield')}
+              className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                securityMode === 'quantumshield'
+                  ? 'bg-[#98144D] text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-650'
+              }`}
+            >
+              QuantumShield Mode
+            </button>
+          </div>
 
           {showQuickLogin ? (
             <button

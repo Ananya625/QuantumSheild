@@ -105,3 +105,46 @@ def simulate_bb84_endpoint(payload: Bb84SimulateRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Simulation failed: {str(e)}")
+
+import subprocess
+import json
+import os
+
+@router.post("/cbom/generate")
+def generate_cbom_endpoint():
+    """
+    Runs PQCA cbomkit-theia to scan the repository, writes to cbom.json, and returns the live CycloneDX CBOM.
+    """
+    scanner_path = r"D:\poc\cbomkit-theia\cbomkit-theia.exe"
+    project_path = r"D:\poc"
+    output_json_path = os.path.join(project_path, "cbom.json")
+    
+    if not os.path.exists(scanner_path):
+        raise HTTPException(status_code=500, detail=f"CBOM scanner not found at {scanner_path}")
+        
+    try:
+        # Run the scanner
+        # cbomkit-theia scans the directory and outputs JSON on stdout
+        result = subprocess.run(
+            [scanner_path, "dir", project_path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        # Parse the JSON output
+        cbom_data = json.loads(result.stdout)
+        
+        # Write to local cbom.json file
+        with open(output_json_path, "w", encoding="utf-8") as f:
+            json.dump(cbom_data, f, indent=2)
+            
+        return cbom_data
+        
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr or e.stdout or str(e)
+        raise HTTPException(status_code=500, detail=f"Scanner execution failed: {error_msg}")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse scanner output as JSON: {result.stdout[:500]}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating CBOM: {str(e)}")

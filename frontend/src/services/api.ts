@@ -122,5 +122,8 @@ export const api = {
 
   simulateBb84: (data: { eve_enabled: boolean; qubits: number }) =>
     apiClient.post('/api/quantum/threat/bb84/simulate', data),
+
+  generateCbom: () =>
+    apiClient.post('/api/quantum/cbom/generate'),
 };
 

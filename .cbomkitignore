@@ -1,0 +1,14 @@
+# Exclude large dependency and control directories
+backend/venv/
+frontend/node_modules/
+cbomkit-theia/
+.git/
+**/venv/**
+**/node_modules/**
+**/.git/**
+**/cbomkit-theia/**
+dist/
+build/
+*.exe
+*.zip
+*.log
