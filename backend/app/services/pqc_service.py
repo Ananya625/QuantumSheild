@@ -1,5 +1,7 @@
 import random
 import hashlib
+from qiskit import QuantumCircuit
+from qiskit_aer import AerSimulator
 from cryptography.hazmat.primitives.asymmetric import mlkem, mldsa
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
@@ -10,43 +12,62 @@ class PqcService:
     @staticmethod
     def simulate_bb84(num_bits: int = 256, noise_rate: float = 0.02, eavesdrop: bool = False) -> dict:
         """
-        Simulates the BB84 QKD protocol between Alice and Bob:
+        Simulates the BB84 QKD protocol between Alice and Bob using Qiskit quantum circuits:
         1. Alice generates random bits and random bases (+ or x).
-        2. Bob generates random measurement bases.
-        3. Bob measures Alice's qubits (introducing noise_rate bit flips on mismatch/noise).
-        4. Reconcile matching bases.
-        5. Calculate exact QBER (Quantum Bit Error Rate).
-        6. Perform error correction (reconcile Bob's key to Alice's).
-        7. Privacy amplification (SHA-256 hash).
+        2. Qiskit QuantumCircuit prepares Alice's quantum states via X and H gates.
+        3. If eavesdropping is enabled, Eve measures and collapses the quantum states.
+        4. Bob applies basis measurement rotations (H gate for x basis) and measures.
+        5. Qiskit AerSimulator executes the circuit and extracts Bob's classical measurements.
+        6. Basis reconciliation (sifting matching bases).
+        7. Calculate exact QBER (Quantum Bit Error Rate).
+        8. Error correction and Privacy Amplification (SHA-256).
         """
-        # Alice's random bits (0 or 1)
+        # 1. Alice's random bits (0 or 1) and random bases ('+' rectilinear or 'x' diagonal)
         alice_bits = [random.randint(0, 1) for _ in range(num_bits)]
-        # Alice's bases: '+' (rectilinear) or 'x' (diagonal)
         alice_bases = [random.choice(['+', 'x']) for _ in range(num_bits)]
-        
-        # Bob's bases
         bob_bases = [random.choice(['+', 'x']) for _ in range(num_bits)]
         
-        # If eavesdropping is enabled, Eve intercepts the qubits before Bob
-        if eavesdrop:
-            transmitted_bits = EavesdropService.intercept_qubits(alice_bits, alice_bases, num_bits)
-        else:
-            transmitted_bits = alice_bits
-            
-        # Bob measures Alice's bits
-        bob_measured = []
+        # 2. Build Qiskit Quantum Circuit
+        qc = QuantumCircuit(num_bits, num_bits)
+        
+        # --- Stage A: Alice prepares photon polarization states ---
         for i in range(num_bits):
-            if alice_bases[i] == bob_bases[i]:
-                # Correct basis: Bob gets Alice's bit, but noise might flip it
-                bit = transmitted_bits[i]
-                if random.random() < noise_rate:
-                    bit = 1 - bit # Flip bit due to channel noise
-                bob_measured.append(bit)
-            else:
-                # Mismatched basis: Bob gets a random bit
-                bob_measured.append(random.randint(0, 1))
+            if alice_bits[i] == 1:
+                qc.x(i)  # Flip |0> to |1>
+            if alice_bases[i] == 'x':
+                qc.h(i)  # Apply Hadamard to prepare |+> or |->
                 
-        # Basis reconciliation
+        # --- Stage B: Eve Eavesdropping (Quantum State Collapse) ---
+        if eavesdrop:
+            for i in range(num_bits):
+                eve_basis = random.choice(['+', 'x'])
+                if eve_basis == 'x':
+                    qc.h(i)
+                qc.measure(i, i)  # Collapses the quantum state
+                if eve_basis == 'x':
+                    qc.h(i)  # Send forward to Bob
+                    
+        # --- Stage C: Bob Measures in Chosen Bases ---
+        for i in range(num_bits):
+            if bob_bases[i] == 'x':
+                qc.h(i)  # Rotate to measure diagonal basis
+            qc.measure(i, i)
+            
+        # --- Stage D: Run Circuit Simulation on Qiskit Aer ---
+        simulator = AerSimulator()
+        job = simulator.run(qc, shots=1, memory=True)
+        result = job.result()
+        raw_memory = result.get_memory()[0]
+        # Qiskit stores bitstring in reverse order (qubit 0 is LSB)
+        bob_measured = [int(b) for b in reversed(raw_memory)]
+        
+        # Apply simulated physical fiber channel noise
+        if noise_rate > 0:
+            for i in range(num_bits):
+                if random.random() < noise_rate:
+                    bob_measured[i] = 1 - bob_measured[i]
+                    
+        # --- Stage E: Basis Reconciliation (Sifting) ---
         matching_indices = [i for i in range(num_bits) if alice_bases[i] == bob_bases[i]]
         
         alice_reconciled = [alice_bits[i] for i in matching_indices]
@@ -58,8 +79,7 @@ class PqcService:
         qber = (errors / total_matched) if total_matched > 0 else 0.0
         
         # Error correction: Bob corrects his mismatched bits to match Alice's
-        # (Simulating Cascade/LDPC error correction, yielding Alice's exact key)
-        corrected_bits = list(alice_reconciled) # Bob corrects his bits to match Alice
+        corrected_bits = list(alice_reconciled)
         
         # Privacy Amplification: Hash the corrected bits to get a shared secret
         bit_string = "".join(str(b) for b in corrected_bits)
@@ -73,6 +93,7 @@ class PqcService:
             "qber": qber * 100, # Percentage
             "bb84_secret_hex": bb84_secret_bytes.hex()
         }
+
 
     @staticmethod
     def generate_mlkem_exchange() -> dict:
