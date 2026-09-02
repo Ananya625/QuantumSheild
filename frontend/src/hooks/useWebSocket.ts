@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { WS_BASE_URL } from '../services/api';
 
 export interface WsEvent {
   event: string;
@@ -17,8 +18,8 @@ export function useWebSocket(sessionId: string | null) {
       socketRef.current.close();
     }
     
-    // In dev environment, websocket targets port 8000
-    const ws = new WebSocket(`ws://127.0.0.1:8000/ws/transaction/${id}`);
+    // Target dynamic WebSocket endpoint (Render in production, localhost in development)
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/transaction/${id}`);
     socketRef.current = ws;
 
     ws.onopen = () => {

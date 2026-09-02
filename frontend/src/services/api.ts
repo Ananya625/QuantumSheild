@@ -1,6 +1,16 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const defaultHttp = import.meta.env.PROD 
+  ? 'https://quantumsheild-3626.onrender.com' 
+  : 'http://127.0.0.1:8000';
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultHttp;
+
+export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || (
+  API_BASE_URL.startsWith('https://')
+    ? API_BASE_URL.replace('https://', 'wss://')
+    : API_BASE_URL.replace('http://', 'ws://')
+);
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

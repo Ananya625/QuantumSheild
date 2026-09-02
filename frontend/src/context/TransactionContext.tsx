@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { api } from '../services/api';
+import { api, WS_BASE_URL } from '../services/api';
 import type { TransferPayload } from '../services/api';
 
 export interface LogEntry {
@@ -379,7 +379,7 @@ export const TransactionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setActiveTxId(txId);
       
       // Connect to WebSocket gateway
-      const socket = new WebSocket(`ws://127.0.0.1:8000/ws/transaction/${sessionIdA}`);
+      const socket = new WebSocket(`${WS_BASE_URL}/ws/transaction/${sessionIdA}`);
       setWs(socket);
       
       socket.onmessage = async (event) => {

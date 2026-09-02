@@ -16,10 +16,19 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="QuantumShield - Security Pipeline PoC", version="1.0.0")
 
-# Enable CORS for frontend dev server
+# Enable CORS for frontend and production deployment environments
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "https://quantum-shield-omega.vercel.app",
+    "https://quantumsheild-3626.onrender.com",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
