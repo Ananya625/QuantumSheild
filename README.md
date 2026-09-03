@@ -8,6 +8,17 @@ The system allows users to execute interbank fund transfers under two distinct s
 
 ---
 
+## 🌐 Live Deployments
+
+| Component | Service | URL |
+| :--- | :--- | :--- |
+| **Frontend Application** | Vercel | [https://quantum-sheild-omega.vercel.app](https://quantum-sheild-omega.vercel.app) |
+| **Backend API Gateway** | Render | [https://quantumsheild-3626.onrender.com](https://quantumsheild-3626.onrender.com) |
+| **Interactive API Docs (Swagger)** | Render | [https://quantumsheild-3626.onrender.com/docs](https://quantumsheild-3626.onrender.com/docs) |
+| **Live CycloneDX CBOM** | Render | [https://quantumsheild-3626.onrender.com/api/quantum/cbom](https://quantumsheild-3626.onrender.com/api/quantum/cbom) |
+
+---
+
 ## 🏛️ Project Architecture
 
 ```mermaid
